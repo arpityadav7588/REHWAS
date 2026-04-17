@@ -1,33 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { Building2, ArrowRight, Loader2 } from 'lucide-react';
+import { Building2, ArrowRight, Loader2, Home, LayoutDashboard, ShieldCheck, Mail, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 /**
  * The Login page component.
- * WHAT IT DOES: Handles user authentication using phone OTP and provides a new user onboarding flow.
- * ANALOGY: The front reception desk where visitors provide their number, get verified, and state their business before entering.
+ * WHAT IT DOES: Handles user authentication using email OTP and provides a dual-entry role-based onboarding.
+ * ANALOGY: A grand entrance with two distinct paths—one leads to the showroom (Tenant) and the other to the management office (Landlord).
  */
 export default function Login() {
-  const [step, setStep] = useState<1 | 2 | 3>(1); // 1: Phone, 2: OTP, 3: Onboarding
-  const [phone, setPhone] = useState('');
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0); // 0: Role Selection, 1: Email, 2: OTP, 3: Onboarding
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<'tenant' | 'landlord'>('tenant');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   
-  const { signInWithPhone, verifyOtp, updateProfile } = useAuth();
+  const { signInWithEmail, verifyOtp, updateProfile } = useAuth();
   const navigate = useNavigate();
 
-  /**
-   * Starts a 30-second countdown timer for resending OTP.
-   * WHAT IT DOES: Prevents users from spamming the "Resend OTP" button.
-   * ANALOGY: A cooling down period for a machine before you can press the power button again.
-   */
+  // Animation effect on step change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
+
   const startCountdown = () => {
-    setCountdown(30);
+    setCountdown(60);
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -39,20 +39,15 @@ export default function Login() {
     }, 1000);
   };
 
-  /**
-   * Handles sending the initial OTP.
-   * WHAT IT DOES: Validates the phone number format and calls the auth hook to send the SMS.
-   * ANALOGY: Handing your phone to the receptionist to send you a verification text.
-   */
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone.length !== 10 || !/^\d+$/.test(phone)) {
-      toast.error('Please enter a valid 10-digit phone number');
+    if (!email || !email.includes('@')) {
+      toast.error('Please enter a valid email address');
       return;
     }
     
     setLoading(true);
-    const { error } = await signInWithPhone(`+91${phone}`);
+    const { error } = await signInWithEmail(email);
     setLoading(false);
     
     if (error) {
@@ -60,33 +55,27 @@ export default function Login() {
     } else {
       setStep(2);
       startCountdown();
-      toast.success('OTP sent successfully');
+      toast.success('Verification code sent to your email');
     }
   };
 
-  /**
-   * Handles verifying the user's OTP.
-   * WHAT IT DOES: Validates the 6-digit code and checks if the user needs onboarding or can be redirected.
-   * ANALOGY: Handing the secret code back to the receptionist to get your entry pass.
-   */
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length < 6) {
-      toast.error('Please enter a valid 6-digit OTP');
+      toast.error('Please enter the 6-digit code');
       return;
     }
     
     setLoading(true);
-    const { error, profile } = await verifyOtp(`+91${phone}`, otp);
+    const { error, profile } = await verifyOtp(email, otp, 'email');
     setLoading(false);
     
     if (error) {
-      toast.error('Invalid OTP. Please try again.');
+      toast.error('Invalid code. Please try again.');
     } else {
       toast.success('Logged in successfully!');
-      // Check if user is complete
       if (profile && !profile.full_name) {
-        setStep(3); // Go to onboarding
+        setStep(3);
       } else if (profile?.role === 'landlord') {
         navigate('/dashboard');
       } else {
@@ -95,11 +84,6 @@ export default function Login() {
     }
   };
 
-  /**
-   * Handles the onboarding form submission for new users.
-   * WHAT IT DOES: Saves the user's name and role, then redirects them to the appropriate dashboard.
-   * ANALOGY: Filling out your name and bringing your ID card to life on your first visit.
-   */
   const handleOnboarding = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -124,89 +108,159 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-surface font-sans">
-      {/* Left Side - Branding (Hidden on Mobile) */}
-      <div className="md:w-1/2 bg-brand text-white p-8 md:p-12 flex-col justify-between hidden md:flex">
-        <div>
-          <div className="flex items-center gap-2 mb-8">
+    <div className="min-h-screen flex flex-col md:flex-row bg-surface font-sans selection:bg-brand/20">
+      {/* Left Decoration - Branding (Hidden on Mobile) */}
+      <div className="md:w-5/12 bg-brand text-white p-12 flex flex-col justify-between hidden md:flex relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-400/20 rounded-full -ml-48 -mb-48 blur-3xl"></div>
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-16 cursor-pointer" onClick={() => navigate('/')}>
             <Building2 className="w-8 h-8" />
-            <span className="text-2xl font-bold tracking-tight">REHWAS</span>
+            <span className="text-2xl font-black tracking-tight">REHWAS</span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-extrabold leading-tight mt-16">
-            Find your perfect<br />space today.
-          </h2>
-          <p className="mt-6 text-lg text-emerald-100 max-w-md">
-            The easiest way to discover, rent, and manage rooms, PGs, and apartments across India.
-          </p>
+          
+          <div className="space-y-6">
+             <h2 className="text-5xl font-black leading-none tracking-tighter">
+                Making Bharat's<br />Rentals Better.
+             </h2>
+             <p className="text-xl text-emerald-100/80 leading-relaxed font-medium">
+                The most transparent platform to discover and manage premium urban living spaces.
+             </p>
+          </div>
         </div>
-        <div className="text-emerald-200 text-sm">
-          © {new Date().getFullYear()} REHWAS Technologies
+
+        <div className="relative z-10">
+           <div className="bg-white/10 backdrop-blur-lg border border-white/20 p-6 rounded-[2rem] flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+                 <ShieldCheck className="text-white w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-white leading-tight">Join 10,000+ verified tenants and landlords today.</p>
+           </div>
+           <p className="mt-8 text-emerald-200/50 text-[10px] font-black uppercase tracking-widest">
+              © {new Date().getFullYear()} REHWAS Technologies. Built for Bharath 🇮🇳
+           </p>
         </div>
       </div>
 
-      {/* Right Side - Form */}
-      <div className="flex-1 flex flex-col justify-center items-center p-6 md:p-12">
-        <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+      {/* Right Interaction Area */}
+      <div className="flex-1 flex flex-col justify-center items-center p-6 md:p-12 min-h-screen">
+        <div className="w-full max-w-lg bg-white sm:p-10 p-4 rounded-[2.5rem] shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-slate-50 transition-all">
           
-          {/* Mobile Header */}
-          <div className="flex md:hidden items-center justify-center gap-2 mb-10 text-brand">
-            <Building2 className="w-7 h-7" />
-            <span className="text-2xl font-bold tracking-tight">REHWAS</span>
-          </div>
+          {/* Progress Header (for Login Steps) */}
+          {step > 0 && (
+            <div className="flex items-center justify-between mb-10">
+               <button 
+                 onClick={() => setStep(prev => (prev - 1) as any)}
+                 className="flex items-center gap-2 text-slate-400 font-bold text-xs hover:text-brand transition-colors uppercase tracking-widest"
+               >
+                 Go Back
+               </button>
+               <div className="flex gap-1.5">
+                  <div className={`h-1.5 w-8 rounded-full transition-all ${step >= 1 ? 'bg-brand shadow-sm shadow-brand/20' : 'bg-slate-100'}`}></div>
+                  <div className={`h-1.5 w-8 rounded-full transition-all ${step >= 2 ? 'bg-brand shadow-sm shadow-brand/20' : 'bg-slate-100'}`}></div>
+               </div>
+            </div>
+          )}
 
+          {/* STEP 0: Role Selection */}
+          {step === 0 && (
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="text-center">
+                  <h1 className="text-3xl font-black text-dark mb-3 tracking-tight">How can we help you?</h1>
+                  <p className="text-slate-400 font-medium">Pick a path and let's get you settled.</p>
+               </div>
+
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <button 
+                    onClick={() => { setRole('tenant'); setStep(1); }}
+                    className="group relative flex flex-col items-center justify-center p-8 bg-surface border-2 border-slate-50 rounded-[2.5rem] hover:border-brand/40 hover:bg-emerald-50/30 transition-all text-center"
+                  >
+                     <div className="w-20 h-20 bg-white shadow-sm group-hover:shadow-md rounded-[2.2rem] flex items-center justify-center mb-6 border border-slate-100 transition-all rotate-3 group-hover:rotate-0">
+                        <Search className="w-10 h-10 text-brand" />
+                     </div>
+                     <span className="font-black text-dark text-lg mb-2">Find a Home</span>
+                     <p className="text-slate-400 text-xs font-semibold leading-relaxed">Search rooms & PGs with zero brokerage.</p>
+                     <div className="mt-6 w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center group-hover:bg-brand group-hover:text-white transition-all">
+                        <ArrowRight size={18} />
+                     </div>
+                  </button>
+
+                  <button 
+                    onClick={() => { setRole('landlord'); setStep(1); }}
+                    className="group relative flex flex-col items-center justify-center p-8 bg-surface border-2 border-slate-50 rounded-[2.5rem] hover:border-blue-200 hover:bg-blue-50/30 transition-all text-center"
+                  >
+                     <div className="w-20 h-20 bg-white shadow-sm group-hover:shadow-md rounded-[2.2rem] flex items-center justify-center mb-6 border border-slate-100 transition-all -rotate-3 group-hover:rotate-0">
+                        <LayoutDashboard className="w-10 h-10 text-blue-600" />
+                     </div>
+                     <span className="font-black text-dark text-lg mb-2">List Property</span>
+                     <p className="text-slate-400 text-xs font-semibold leading-relaxed">Find verified tenants and manage rent.</p>
+                     <div className="mt-6 w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        <ArrowRight size={18} />
+                     </div>
+                  </button>
+               </div>
+
+               <div className="pt-4 text-center">
+                  <p className="text-slate-400 text-sm font-medium">Already have an account? <span onClick={() => setStep(1)} className="text-brand font-bold cursor-pointer hover:underline underline-offset-4">Log in here</span></p>
+               </div>
+            </div>
+          )}
+
+          {/* STEP 1: Email */}
           {step === 1 && (
-            <form onSubmit={handleSendOtp} className="space-y-6">
-              <div className="text-center md:text-left mb-8">
-                <h2 className="text-2xl font-bold text-dark">Welcome back</h2>
-                <p className="text-slate-500 mt-2">Enter your phone number to continue</p>
+            <form onSubmit={handleSendOtp} className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-400">
+              <div>
+                <h2 className="text-3xl font-black text-dark tracking-tighter">Your Email</h2>
+                <p className="text-slate-500 mt-2 font-medium">We'll send a secure login link to your inbox.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Phone Number</label>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Email Address</label>
                 <div className="relative flex items-center">
-                  <div className="absolute left-4 flex items-center gap-2 text-slate-600 pointer-events-none">
-                    <span className="text-lg">🇮🇳</span>
-                    <span className="font-medium">+91</span>
-                    <div className="h-5 w-px bg-slate-300 ml-1"></div>
+                  <div className="absolute left-5 flex items-center text-slate-400 pointer-events-none">
+                    <Mail className="w-5 h-5" />
                   </div>
                   <input
-                    type="tel"
+                    type="email"
                     required
-                    maxLength={10}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                    className="w-full pl-[5.5rem] pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all text-dark font-medium placeholder-slate-400"
-                    placeholder="98765 43210"
+                    autoFocus
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-14 pr-6 py-5 bg-surface border-2 border-slate-50 rounded-[1.5rem] focus:ring-4 focus:ring-brand/5 focus:border-brand focus:bg-white outline-none transition-all text-dark font-black text-lg placeholder-slate-300"
+                    placeholder="name@example.com"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || phone.length !== 10}
-                className="w-full bg-brand hover:bg-emerald-600 text-white font-semibold flex py-3.5 px-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed justify-center items-center gap-2 shadow-sm hover:shadow active:scale-[0.98]"
+                disabled={loading || !email.includes('@')}
+                className="w-full bg-brand text-white font-black py-5 px-6 rounded-[1.5rem] transition-all disabled:opacity-30 disabled:grayscale flex justify-center items-center gap-3 shadow-xl shadow-brand/20 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Get OTP'}
+                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Send Login Code <ArrowRight className="w-5 h-5" /></>}
               </button>
             </form>
           )}
 
+          {/* STEP 2: Verification */}
           {step === 2 && (
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
-              <div className="text-center md:text-left mb-8">
-                <h2 className="text-2xl font-bold text-dark">Verify OTP</h2>
-                <p className="text-slate-500 mt-2">Sent securely to +91 {phone}</p>
+            <form onSubmit={handleVerifyOtp} className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-400">
+              <div>
+                <h2 className="text-3xl font-black text-dark tracking-tighter">Check your Inbox</h2>
+                <p className="text-slate-500 mt-2 font-medium">We've sent a 6-digit code to {email}</p>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">One Time Password</label>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Verification Code</label>
                 <input
                   type="text"
                   required
                   maxLength={6}
+                  autoFocus
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all text-center tracking-[0.5em] text-xl font-bold text-dark"
+                  className="w-full px-6 py-6 bg-surface border-2 border-slate-50 rounded-[1.5rem] focus:ring-4 focus:ring-brand/5 focus:border-brand focus:bg-white outline-none transition-all text-center tracking-[0.5em] text-3xl font-black text-dark placeholder-slate-100"
                   placeholder="------"
                 />
               </div>
@@ -214,87 +268,67 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading || otp.length < 6}
-                className="w-full bg-brand hover:bg-emerald-600 text-white font-semibold py-3.5 px-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-sm hover:shadow active:scale-[0.98]"
+                className="w-full bg-brand text-white font-black py-5 px-6 rounded-[1.5rem] transition-all disabled:opacity-30 flex justify-center items-center gap-3 shadow-xl shadow-brand/20 hover:scale-[1.02] active:scale-[0.98]"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify & Login'}
+                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Sign In'}
               </button>
 
-              <div className="text-center mt-6">
+              <div className="text-center pt-2">
                 <button
                   type="button"
                   onClick={handleSendOtp}
                   disabled={countdown > 0 || loading}
-                  className="text-sm font-medium text-brand hover:text-emerald-700 disabled:text-slate-400 transition-colors"
+                  className="text-sm font-black text-brand hover:text-emerald-700 disabled:text-slate-300 transition-colors uppercase tracking-widest"
                 >
-                  {countdown > 0 ? `Resend OTP in ${countdown}s` : 'Resend OTP'}
+                  {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Email'}
                 </button>
               </div>
             </form>
           )}
 
+          {/* STEP 3: Onboarding */}
           {step === 3 && (
-            <form onSubmit={handleOnboarding} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="text-center md:text-left">
-                <h2 className="text-2xl font-bold text-dark">Complete your profile</h2>
-                <p className="text-slate-500 mt-2">Just a few details before you dive in.</p>
+            <form onSubmit={handleOnboarding} className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-600">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-brand/10 text-brand rounded-2xl flex items-center justify-center mx-auto mb-6">
+                   <Home size={32} />
+                </div>
+                <h2 className="text-3xl font-black text-dark tracking-tight">The Final Detail</h2>
+                <p className="text-slate-500 mt-2 font-medium">Welcome to the family. What should we call you?</p>
               </div>
 
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">What's your full name?</label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all text-dark placeholder-slate-400 font-medium"
-                    placeholder="e.g. Rahul Sharma"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">I am looking to...</label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setRole('tenant')}
-                      className={`relative py-4 px-4 rounded-xl font-semibold border-2 transition-all flex flex-col items-center gap-2 ${
-                        role === 'tenant' 
-                          ? 'border-brand bg-emerald-50 text-brand shadow-sm scale-[1.02]' 
-                          : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span>Rent a Room</span>
-                      {role === 'tenant' && (
-                        <div className="absolute top-2 right-2 w-3 h-3 bg-brand rounded-full border-2 border-white"></div>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRole('landlord')}
-                      className={`relative py-4 px-4 rounded-xl font-semibold border-2 transition-all flex flex-col items-center gap-2 ${
-                        role === 'landlord' 
-                          ? 'border-brand bg-emerald-50 text-brand shadow-sm scale-[1.02]' 
-                          : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span>List a Property</span>
-                      {role === 'landlord' && (
-                        <div className="absolute top-2 right-2 w-3 h-3 bg-brand rounded-full border-2 border-white"></div>
-                      )}
-                    </button>
-                  </div>
-                </div>
+              <div className="space-y-6">
+                 <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      autoFocus
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-6 py-5 bg-surface border-2 border-slate-50 rounded-[1.5rem] focus:ring-4 focus:ring-brand/10 focus:border-brand focus:bg-white outline-none transition-all text-dark font-black text-xl placeholder-slate-200"
+                      placeholder="e.g. Rahul Sharma"
+                    />
+                 </div>
+                 
+                 <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex gap-4 items-center">
+                    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center shrink-0">
+                       {role === 'tenant' ? <div className="text-lg">🏡</div> : <div className="text-lg">🔑</div>}
+                    </div>
+                    <div>
+                       <p className="text-xs font-black text-brand uppercase tracking-tighter">Your Role</p>
+                       <p className="text-sm font-bold text-dark">{role === 'tenant' ? 'I am looking to rent a room' : 'I am a property owner/manager'}</p>
+                    </div>
+                    <button type="button" onClick={() => setStep(0)} className="ml-auto text-[10px] font-black text-slate-400 hover:text-brand transition-colors uppercase">Change</button>
+                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={loading || !name.trim()}
-                className="w-full bg-brand hover:bg-emerald-600 text-white font-semibold py-4 px-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow hover:shadow-md active:scale-[0.98] mt-4"
+                className="w-full bg-brand text-white font-black py-5 px-6 rounded-[1.5rem] transition-all disabled:opacity-30 shadow-xl shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] flex justify-center items-center gap-3"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                  <>Continue to Dashboard <ArrowRight className="w-5 h-5" /></>
-                )}
+                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Access My Estate <ArrowRight size={20} /></>}
               </button>
             </form>
           )}
@@ -304,3 +338,4 @@ export default function Login() {
     </div>
   );
 }
+

@@ -124,12 +124,12 @@ export default function Discover() {
               </div>
             )}
             
-            <div className="flex flex-col gap-5 pb-20 md:pb-4">
+            <div className="flex flex-col gap-8 pb-20 md:pb-4">
               <div className="flex justify-between items-end mb-1 px-1">
-                <h2 className="text-lg font-bold text-gray-800">Results</h2>
+                <h2 className="text-lg font-bold text-gray-800">Available Rooms</h2>
                 <button 
                   onClick={() => setShowFiltersMobile(true)} 
-                  className="md:hidden flex items-center justify-center gap-1 min-h-[44px] text-green-700 font-bold bg-green-50 border border-green-200 px-4 rounded-xl shadow-sm text-sm"
+                  className="md:hidden flex items-center justify-center gap-1 min-h-[44px] text-brand font-bold bg-emerald-50 border border-emerald-200 px-4 rounded-xl shadow-sm text-sm"
                 >
                   Filters
                 </button>
@@ -159,19 +159,97 @@ export default function Discover() {
                 <div className="flex flex-col items-center justify-center py-16 px-6 text-center text-gray-500 bg-gray-50 rounded-[20px] border-2 border-gray-100 border-dashed">
                   <div className="w-24 h-24 bg-white shadow-sm rounded-full flex items-center justify-center mb-5 relative">
                     <MapIcon size={40} className="text-gray-300" />
-                    <Search size={20} className="text-green-500 absolute bottom-3 right-3 bg-white rounded-full" />
+                    <Search size={20} className="text-brand absolute bottom-3 right-3 bg-white rounded-full" />
                   </div>
                   <h3 className="text-xl font-bold text-gray-800 mb-2">No rooms left</h3>
                   <p className="text-gray-500 max-w-[250px]">We couldn't find any rooms matching your exact filters.</p>
                   <button 
                     onClick={() => setSearchParams(new URLSearchParams())}
-                    className="mt-6 font-bold text-green-600 bg-green-50 px-6 py-2.5 rounded-xl hover:bg-green-100 transition-colors"
+                    className="mt-6 font-bold text-brand bg-emerald-50 px-6 py-2.5 rounded-xl hover:bg-emerald-100 transition-colors"
                   >
                     Clear All Filters
                   </button>
                 </div>
               )}
+
+              {/* Unique Updates: The Pulse & Coming Soon */}
+              <div className="mt-6 pt-10 border-t border-slate-100">
+                {/* THE PULSE: Neighborhood Board */}
+                <div className="mb-10">
+                   <div className="flex items-center gap-2 mb-6">
+                      <div className="w-8 h-8 bg-rose-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-rose-200">
+                         <span className="material-symbols-outlined text-[18px]">emergency_share</span>
+                      </div>
+                      <h3 className="text-sm font-black text-dark uppercase tracking-widest">The Pulse: Local Tips</h3>
+                   </div>
+                   
+                   <div className="relative group overflow-hidden">
+                      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+                         {[
+                           { area: 'HSR Layout', tip: 'The 3rd Sector park is great for evening walks. Avoid the main road traffic at 6pm.', color: 'emerald' },
+                           { area: 'Indiranagar', tip: 'Great cafes, but water bills can be high in Sector 4. Check the borewell status.', color: 'indigo' },
+                           { area: 'Whitefield', tip: 'Best to live within 2km of the Metro station to avoid the Silk Board crawl.', color: 'orange' },
+                           { area: 'Koramangala', tip: 'Sector 3 is quieter and has better drainage during monsoon.', color: 'blue' }
+                         ].map((p, i) => (
+                           <div key={i} className={`min-w-[240px] snap-start bg-${p.color}-50/50 p-5 rounded-3xl border border-${p.color}-100 flex flex-col justify-between hover:bg-white transition-all`}>
+                              <div>
+                                 <p className={`text-[10px] font-black text-${p.color}-600 uppercase tracking-tighter mb-2`}>{p.area}</p>
+                                 <p className="text-xs font-bold text-slate-600 leading-relaxed italic">"{p.tip}"</p>
+                              </div>
+                              <div className="mt-4 flex items-center gap-2">
+                                 <div className={`w-1.5 h-1.5 rounded-full bg-${p.color}-500 animate-ping`}></div>
+                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verified Resident</span>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
+                      {/* Gradient Fade for scroll */}
+                      <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white to-transparent pointer-events-none"></div>
+                   </div>
+                </div>
+
+                <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Coming Soon</h3>
+                
+                {/* Feature Pulse Banner */}
+                <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 to-blue-500 rounded-[2rem] p-8 mb-8 shadow-xl shadow-indigo-100">
+                   <div className="relative z-10">
+                      <div className="bg-white/20 backdrop-blur-md w-fit px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-tighter mb-4">Under Development</div>
+                      <h4 className="text-white font-black text-xl leading-tight mb-2">Verified Tenant Profiles</h4>
+                      <p className="text-indigo-100 text-sm font-medium">Boost your trust score and get instant move-ins with Aadhaar-linked verification.</p>
+                   </div>
+                   <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12 scale-150">
+                      <ListIcon size={120} className="text-white" />
+                   </div>
+                </div>
+
+                {/* Cities Scroll */}
+                <div>
+                   <div className="flex justify-between items-center mb-4">
+                      <h4 className="font-bold text-dark">Cities Adding Soon</h4>
+                      <div className="h-1 w-12 bg-slate-200 rounded-full"></div>
+                   </div>
+                   <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+                      {[
+                        { name: 'Hyderabad', img: 'https://images.unsplash.com/photo-1599933023573-0949d2110c71?w=300&q=80' },
+                        { name: 'NCR', img: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=300&q=80' },
+                        { name: 'Chennai', img: 'https://images.unsplash.com/photo-1582512353193-c744170ea939?w=300&q=80' }
+                      ].map(city => (
+                        <div key={city.name} className="min-w-[140px] snap-start">
+                           <div className="h-32 rounded-2xl overflow-hidden mb-2 relative group grayscale hover:grayscale-0 transition-all cursor-default">
+                              <img src={city.img} className="w-full h-full object-cover" alt={city.name} />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                 <span className="text-white text-[10px] font-black uppercase tracking-widest bg-black/40 backdrop-blur-sm px-2 py-1 rounded-md mb-2">Waitlist</span>
+                              </div>
+                           </div>
+                           <p className="font-bold text-slate-700 text-sm">{city.name}</p>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+              </div>
+
             </div>
+
           </div>
         </div>
 

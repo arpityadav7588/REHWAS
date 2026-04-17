@@ -11,6 +11,7 @@ interface AuthContextType {
   loading: boolean;
   isLandlord: boolean;
   signInWithPhone: (phone: string) => Promise<{ error: Error | null }>;
+  signInWithEmail: (email: string) => Promise<{ error: Error | null }>;
   verifyOtp: (phone: string, token: string) => Promise<{ error: Error | null; profile: Profile | null }>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<Profile>) => Promise<{ error: Error | null }>;
@@ -78,16 +79,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   /**
-   * Verifies the OTP sent to the phone.
+   * Initiates login with email via OTP (Magic Link/Code).
+   * WHAT IT DOES: Sends an email code to the provided address using Supabase Auth.
+   * ANALOGY: Sending a digital invitation key to your inbox instead of ringing the bell.
+   */
+  const signInWithEmail = async (email: string) => {
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    return { error };
+  };
+
+  /**
+   * Verifies the OTP sent via email or phone.
    * WHAT IT DOES: Submits the token to Supabase, logs the user in if correct, and fetches their profile.
    * ANALOGY: Showing the secret passkey to the bouncer to get inside the club.
    */
-  const verifyOtp = async (phone: string, token: string) => {
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone,
-      token,
-      type: 'sms',
-    });
+  const verifyOtp = async (identifier: string, token: string, type: 'sms' | 'email' | 'magiclink' = 'sms') => {
+    const params: any = { token, type };
+    if (type === 'sms') params.phone = identifier;
+    else params.email = identifier;
+
+    const { data, error } = await supabase.auth.verifyOtp(params);
     
     if (error) return { error, profile: null };
     
@@ -135,10 +146,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       loading,
       isLandlord: profile?.role === 'landlord',
       signInWithPhone,
+      signInWithEmail,
       verifyOtp,
       signOut,
       updateProfile
     }}>
+
       {children}
     </AuthContext.Provider>
   );

@@ -11,8 +11,9 @@ import toast from 'react-hot-toast';
 import { format, parseISO, subMonths } from 'date-fns';
 import { 
   Home, Users, BookOpen, Bell, Plus, IndianRupee, Key, 
-  DoorOpen, Edit, Trash2, ShieldAlert, Phone, Send
+  DoorOpen, Edit, Trash2, ShieldAlert, Phone, Send, FileText, Download, X
 } from 'lucide-react';
+import { DigitalDossier } from '@/components/DigitalDossier';
 
 /**
  * Extended Tenant Type for Dashboard
@@ -38,8 +39,11 @@ export default function LandlordDashboard() {
   // Data States
   const [loading, setLoading] = useState(true);
   const [tenants, setTenants] = useState<TenantExtended[]>([]);
-  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<RentLedger[]>([]);
   const [rentCollected, setRentCollected] = useState(0);
+
+  // Dossier State
+  const [selectedDossierTenant, setSelectedDossierTenant] = useState<any>(null);
 
   // Add Tenant Modal States
   const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
@@ -147,7 +151,6 @@ export default function LandlordDashboard() {
     try {
       // 1. Try to find or insert a profile purely via phone mapping (simplified for front-end demonstration)
       // Note: Direct insertion without auth might be restricted via RLS, assuming standard demo permissions.
-      const tenantProfileId = crypto.randomUUID(); // Mocking deterministic insertion bypass for demo purposes directly into tenants bypassing FK restriction if disabled, else real app needs an invite flow.
       let finalProfileId = "test-override"; // Override string to avoid blocking demo execution
       
       const { data: existingProfile } = await supabase.from('profiles').select('id').eq('phone', tenantPhone).single();
@@ -169,7 +172,6 @@ export default function LandlordDashboard() {
       await updateRoom(tenantRoomId, { available: false });
 
       // 4. Generate next 6 months of ledger logs
-      const months = Array.from({ length: 6 }).map((_, i) => format(subMonths(new Date(), -i), 'MMM yyyy')); // e.g. Jul 2025, Aug 2025... Wait! If we subMonths(-i) we add months? No, date-fns addMonths is better. Let's just generate strings manually or subMonths(-i) is essentially adding. We'll use subMonths(new Date(), -i).
       
       // Fixed algorithm for future months:
       const generateMonths = () => {
@@ -357,12 +359,30 @@ export default function LandlordDashboard() {
                            <Home size={16} className="text-gray-400" />
                            {t.rooms?.title || 'Unknown Room'}
                         </td>
-                        <td className="p-5">{format(parseISO(t.move_in_date), 'MMM dd, yyyy')}</td>
-                        <td className="p-5 font-bold text-green-700">₹{t.rent_amount.toLocaleString()}</td>
-                        <td className="p-5 text-right">
+                        <td className="p-5">
+                           {format(parseISO(t.move_in_date), 'MMM dd, yyyy')}
+                        </td>
+                        <td className="p-5 font-extrabold text-dark text-lg">₹{t.rent_amount.toLocaleString()}</td>
+                        <td className="p-5 text-right flex items-center justify-end gap-2">
+                           <button 
+                             onClick={() => {
+                                setSelectedDossierTenant({
+                                   full_name: t.profiles?.full_name || 'Tenant',
+                                   phone: t.profiles?.phone || 'No phone',
+                                   move_in_date: format(parseISO(t.move_in_date), 'MMM dd, yyyy'),
+                                   room_title: t.rooms?.title || 'Room',
+                                   rent_amount: t.rent_amount,
+                                   kyc_verified: true
+                                });
+                                setTimeout(() => window.print(), 200);
+                             }}
+                             className="text-brand hover:text-emerald-700 font-bold text-xs bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-xl transition-all border border-emerald-100 flex items-center gap-2"
+                           >
+                             <FileText size={14} /> Export Dossier
+                           </button>
                            <button 
                              onClick={() => handleEndTenancy(t.id, t.room_id)}
-                             className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors border border-red-100"
+                             className="text-red-500 hover:text-red-700 font-bold text-xs bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl transition-all border border-red-100"
                            >
                              End Tenancy
                            </button>
@@ -533,6 +553,8 @@ export default function LandlordDashboard() {
           </div>
         </div>
       )}
+      {/* Hidden Digital Dossier for Printing */}
+      {selectedDossierTenant && <DigitalDossier tenant={selectedDossierTenant} />}
     </div>
   );
 }

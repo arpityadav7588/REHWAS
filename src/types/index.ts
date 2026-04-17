@@ -33,6 +33,8 @@ export interface Room {
   available: boolean;
   amenities: string[];
   photos: string[];
+  bhoomi_score?: number;
+  bhoomi_grade?: 'A+' | 'A' | 'B+' | 'B';
   created_at: string;
 }
 
@@ -62,6 +64,8 @@ export interface RentLedger {
   landlord_id: string;
   month: string;
   amount: number;
+  utility_amount?: number;
+  arrears?: number;
   status: 'paid' | 'unpaid' | 'partial';
   paid_on?: string;
   notes?: string;

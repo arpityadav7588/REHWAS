@@ -69,7 +69,9 @@ export default function AddRoom() {
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [newRoomId, setNewRoomId] = useState<string | null>(null);
   
   // Form State
   const [form, setForm] = useState({
@@ -192,9 +194,19 @@ export default function AddRoom() {
     return errs.length === 0;
   };
 
+  const validateStep2 = () => {
+    const errs = [];
+    if (!form.description.trim()) errs.push("- Description is required");
+    if (form.amenities.length === 0) errs.push("- Please select at least one amenity (mandatory)");
+    
+    setErrors(errs);
+    return errs.length === 0;
+  };
+
   const goNext = () => {
     setErrors([]);
     if (step === 1 && !validateStep1()) return;
+    if (step === 2 && !validateStep2()) return;
     setStep(prev => Math.min(prev + 1, 4));
   };
 
@@ -250,22 +262,26 @@ export default function AddRoom() {
     // We combine the extra fields into the description safely to match our schema
     const finalDescription = `${form.description}\n\nGender Preference: ${form.gender_preference}\nFloor: ${form.floor_number} of ${form.total_floors}`;
 
-    const { error: dbError } = await addRoom({
-      landlord_id: user.id,
-      title: form.title,
-      room_type: form.room_type as any,
-      rent_amount: parseInt(form.rent_amount),
-      city: form.city,
-      locality: form.locality,
-      address: form.address,
-      available: true,
-      amenities: form.amenities,
-      photos: uploadedUrls,
-      furnished: form.furnished,
-      latitude: form.latitude,
-      longitude: form.longitude,
-      description: finalDescription
-    });
+    const { data: dbData, error: dbError } = await (supabase as any)
+      .from('rooms')
+      .insert({
+        landlord_id: user.id,
+        title: form.title,
+        room_type: form.room_type,
+        rent_amount: parseInt(form.rent_amount),
+        city: form.city,
+        locality: form.locality,
+        address: form.address,
+        available: true,
+        amenities: form.amenities,
+        photos: uploadedUrls,
+        furnished: form.furnished,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        description: finalDescription
+      })
+      .select()
+      .single();
 
     setLoading(false);
 
@@ -274,12 +290,52 @@ export default function AddRoom() {
       console.error(dbError);
     } else {
       toast.success('Your room is live! 🎉');
-      navigate('/dashboard');
+      setNewRoomId(dbData.id);
+      setSuccess(true);
     }
   };
 
+  if (success) {
+    return (
+      <div className="max-w-2xl mx-auto py-20 px-4 text-center animate-in fade-in zoom-in-95 duration-500">
+        <div className="w-24 h-24 bg-brand/10 text-brand rounded-full flex items-center justify-center mx-auto mb-8">
+           <CheckCircle2 className="w-12 h-12" />
+        </div>
+        <h1 className="text-4xl font-black text-dark mb-4 tracking-tight">Your Property is Live!</h1>
+        <p className="text-lg text-slate-500 mb-10 max-w-md mx-auto">
+          Congratulations! Your room in <span className="font-bold text-dark">{form.locality}</span> is now visible to thousands of potential tenants.
+        </p>
+
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm mb-10 text-left flex gap-4 items-center">
+            <img src={previews[0]} className="w-20 h-20 rounded-2xl object-cover" alt="Preview" />
+            <div>
+              <h3 className="font-bold text-dark line-clamp-1">{form.title}</h3>
+              <p className="text-brand font-black text-lg">₹{parseInt(form.rent_amount).toLocaleString()}</p>
+              <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">{form.city} • {form.room_type}</p>
+            </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <button 
+            onClick={() => navigate(`/room/${newRoomId}`)}
+            className="px-8 py-4 bg-brand text-white font-bold rounded-2xl shadow-lg hover:shadow-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 active:scale-95"
+          >
+            View Listing <ChevronRight className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="px-8 py-4 bg-white text-dark font-bold rounded-2xl shadow border border-slate-200 hover:border-brand hover:text-brand transition-all flex items-center justify-center gap-2 active:scale-95"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6">
+
       
       {/* Progress Indicator */}
       <div className="mb-8 md:mb-10 relative">

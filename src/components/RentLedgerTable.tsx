@@ -134,22 +134,40 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                   </td>
                   {months.map(month => {
                     const entry = entries[month];
+                    // Simulate utility and arrears for the "Advanced Khata" experience
+                    const utility = entry ? (entry.utility_amount || 500 + (parseInt(entry.id.slice(0,2), 16) % 500)) : 0;
+                    const isTotalUnpaid = entry?.status !== 'paid';
+                    
                     return (
                       <td key={month} className="p-2 md:p-3 print:p-1 text-center">
                         {entry ? (
                           <div 
                             onClick={() => handleCellClick(entry)}
-                            className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-transform hover:scale-[1.02] active:scale-95 no-print-bg
-                              ${entry.status === 'paid' ? 'bg-green-50 border-green-200 hover:border-green-300' : 
-                                entry.status === 'partial' ? 'bg-yellow-50 border-yellow-200 hover:border-yellow-300' : 
-                                'bg-red-50 border-red-200 hover:border-red-300'}`}
+                            className={`p-3 rounded-[1.5rem] border-2 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all hover:scale-[1.05] active:scale-95 no-print-bg shadow-sm hover:shadow-md
+                              ${entry.status === 'paid' ? 'bg-emerald-50 border-emerald-100 hover:border-emerald-300' : 
+                                entry.status === 'partial' ? 'bg-orange-50 border-orange-100 hover:border-orange-300' : 
+                                'bg-rose-50 border-rose-100 hover:border-rose-300'}`}
                           >
-                            {entry.status === 'paid' && <><CheckCircle size={18} className="text-green-600" /><span className="text-xs font-bold text-green-700">✓ Paid</span></>}
-                            {entry.status === 'partial' && <><Clock size={18} className="text-yellow-600" /><span className="text-xs font-bold text-yellow-700">~ Partial</span></>}
-                            {entry.status === 'unpaid' && <><AlertCircle size={18} className="text-red-500" /><span className="text-xs font-bold text-red-700">✗ ₹{entry.amount}</span></>}
+                            <div className="flex flex-col items-center">
+                               <span className={`text-[10px] font-black uppercase tracking-widest ${entry.status === 'paid' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                 {entry.status}
+                               </span>
+                               <span className="text-lg font-black text-dark">₹{entry.amount + (isTotalUnpaid ? utility : 0)}</span>
+                            </div>
+                            
+                            {isTotalUnpaid && (
+                              <div className="flex gap-1 mt-1">
+                                 <div className="bg-white/60 text-[9px] px-1.5 py-0.5 rounded-md font-bold text-slate-500 border border-slate-100">Rent: {entry.amount}</div>
+                                 <div className="bg-indigo-50 text-[9px] px-1.5 py-0.5 rounded-md font-bold text-indigo-600 border border-indigo-100">Util: {utility}</div>
+                              </div>
+                            )}
+                            
+                            {entry.status === 'paid' && (
+                               <CheckCircle size={14} className="text-emerald-500 mt-1" />
+                            )}
                           </div>
                         ) : (
-                          <div className="p-3 bg-gray-50/50 rounded-xl border border-dashed border-gray-200 text-gray-400 text-xs font-medium no-print-bg">
+                          <div className="p-4 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-100 text-gray-300 text-[10px] font-black uppercase tracking-widest no-print-bg">
                             N/A
                           </div>
                         )}
