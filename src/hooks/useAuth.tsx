@@ -12,9 +12,10 @@ interface AuthContextType {
   isLandlord: boolean;
   signInWithPhone: (phone: string) => Promise<{ error: Error | null }>;
   signInWithEmail: (email: string) => Promise<{ error: Error | null }>;
-  verifyOtp: (phone: string, token: string) => Promise<{ error: Error | null; profile: Profile | null }>;
+  verifyOtp: (identifier: string, token: string, type?: 'sms' | 'email') => Promise<{ error: Error | null; profile: Profile | null }>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<Profile>) => Promise<{ error: Error | null }>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -112,6 +113,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   /**
+   * Refreshes the local profile data from Supabase.
+   */
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
+  };
+
+  /**
    * Logs the user out.
    * WHAT IT DOES: Clears the Supabase session, resets local state, and redirects to the home page.
    * ANALOGY: Handing back your visitor badge and walking out the front door.
@@ -149,7 +157,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       signInWithEmail,
       verifyOtp,
       signOut,
-      updateProfile
+      updateProfile,
+      refreshProfile
     }}>
 
       {children}

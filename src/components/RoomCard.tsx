@@ -71,9 +71,9 @@ export const RoomCard: React.FC<RoomCardProps> = ({ room, compact = false }) => 
           <span className="px-3 py-1 rounded-lg bg-violet-50 text-violet-700 text-xs font-bold ring-1 ring-violet-100">
             {room.furnished ? 'Furnished' : 'Unfurnished'}
           </span>
-          <span className="px-3 py-1 rounded-lg bg-green-50 text-emerald-700 text-xs font-bold ring-1 ring-green-100 flex items-center gap-1">
-            <ShieldCheck size={14} className="text-emerald-500" />
-            Verified
+          <span className={`px-3 py-1 rounded-lg text-xs font-bold ring-1 flex items-center gap-1 ${room.bhoomi_score && room.bhoomi_score > 750 ? 'bg-green-50 text-emerald-700 ring-green-100' : 'bg-gray-50 text-gray-500 ring-gray-100'}`}>
+            <ShieldCheck size={14} className={room.bhoomi_score && room.bhoomi_score > 750 ? 'text-emerald-500' : 'text-gray-400'} />
+            {room.bhoomi_score && room.bhoomi_score > 750 ? 'Verified listing' : 'Basic listing'}
           </span>
         </div>
 

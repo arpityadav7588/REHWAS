@@ -14,6 +14,7 @@ import {
   DoorOpen, Edit, Trash2, ShieldAlert, Phone, Send, FileText, Download, X
 } from 'lucide-react';
 import { DigitalDossier } from '@/components/DigitalDossier';
+import { VerificationCenter } from '@/components/VerificationCenter';
 
 /**
  * Extended Tenant Type for Dashboard
@@ -216,6 +217,7 @@ export default function LandlordDashboard() {
 
   return (
     <div className="min-h-screen bg-[#fafafa] pb-24 pt-4 md:pt-8 px-4 md:px-8 max-w-7xl mx-auto">
+      <VerificationCenter />
       
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">

@@ -8,7 +8,11 @@ export interface Profile {
   full_name: string;
   phone: string;
   role: 'landlord' | 'tenant';
-  kyc_verified: boolean;
+  kyc_status: 'none' | 'pending' | 'verified' | 'rejected';
+  kyc_verified: boolean; // Keep for backward compatibility
+  aadhaar_hash?: string;
+  avatar_url?: string;
+  bhoomi_score?: number; // Numeric scale 300-900 (Bhoomi 2.0)
   created_at: string;
 }
 
@@ -33,10 +37,16 @@ export interface Room {
   available: boolean;
   amenities: string[];
   photos: string[];
-  bhoomi_score?: number;
+  bhoomi_score?: number; // Numeric scale 300-900 (Bhoomi 2.0)
   bhoomi_grade?: 'A+' | 'A' | 'B+' | 'B';
   utility_billing_type?: 'fixed' | 'shared_headcount' | 'metered';
   utility_fixed_amount?: number;
+  commute_metadata?: {
+    nearest_metro?: string;
+    metro_distance_km?: number;
+    nearest_bus_stop?: string;
+    peak_traffic_multiplier?: number;
+  };
   created_at: string;
 }
 

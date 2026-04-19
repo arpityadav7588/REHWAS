@@ -48,7 +48,7 @@ export const Header = () => {
                     {profile?.role === 'landlord' ? 'List Property' : 'Find Home'}
                   </Link>
                   <div 
-                    onClick={() => navigate(profile?.role === 'landlord' ? '/dashboard' : '/discover')}
+                    onClick={() => navigate('/profile')}
                     className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden cursor-pointer hover:ring-2 hover:ring-brand transition-all"
                   >
                     {profile?.avatar_url ? (

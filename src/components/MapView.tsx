@@ -1,22 +1,35 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Room } from '@/types';
 import { RoomCard } from './RoomCard';
+import { Clock, Zap } from 'lucide-react';
 
 /**
  * Creates a custom div icon for room markers.
  * @param rentAmount Current rent amount of the room.
+ * @param commuteTime Optional travel time to show in commute mode.
  */
-const createPriceIcon = (rentAmount: number) => {
+const createPriceIcon = (rentAmount: number, commuteTime?: number) => {
   const priceK = (rentAmount / 1000).toFixed(1) + 'k';
   return L.divIcon({
     className: 'custom-price-marker',
-    html: `<div class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-2.5 py-1.5 rounded-full shadow-lg border-[3px] border-white text-center whitespace-nowrap transition-colors transform hover:scale-110" style="box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);">₹${priceK}</div>`,
-    iconSize: [48, 30],
-    iconAnchor: [24, 15],
-    popupAnchor: [0, -15]
+    html: `
+      <div class="flex flex-col items-center gap-1 group/marker">
+        ${commuteTime ? `
+          <div class="bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm animate-in zoom-in-50 duration-300">
+            ${commuteTime}m
+          </div>
+        ` : ''}
+        <div class="bg-emerald-600 group-hover/marker:bg-emerald-500 text-white font-extrabold text-xs px-2.5 py-1.5 rounded-full shadow-lg border-[3px] border-white text-center whitespace-nowrap transition-all transform hover:scale-110" style="box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);">
+          ₹${priceK}
+        </div>
+      </div>
+    `,
+    iconSize: [60, 60],
+    iconAnchor: [30, 30],
+    popupAnchor: [0, -30]
   });
 };
 
@@ -61,6 +74,7 @@ interface MapViewProps {
  * WHAT IT DOES: Renders a map with custom markers for each room based on latitude and longitude.
  */
 export const MapView: React.FC<MapViewProps> = ({ rooms }) => {
+  const [commuteMode, setCommuteMode] = useState(false);
   const defaultCenter: [number, number] = [12.9716, 77.5946]; // Bengaluru
   const validRooms = rooms.filter(r => r.latitude && r.longitude);
 
@@ -81,6 +95,17 @@ export const MapView: React.FC<MapViewProps> = ({ rooms }) => {
 
   return (
     <div className="w-full h-full z-0 relative bg-[#e5e3df]">
+      {/* Floating Toggle Controls */}
+      <div className="absolute top-4 left-4 z-[400] flex flex-col gap-2">
+         <button 
+           onClick={() => setCommuteMode(!commuteMode)}
+           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition-all border-2 ${commuteMode ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-white text-slate-600 border-white hover:border-indigo-100'}`}
+         >
+           {commuteMode ? <Zap size={14} className="animate-pulse" /> : <Clock size={14} />}
+           {commuteMode ? 'Commute: Active' : 'Commute View'}
+         </button>
+      </div>
+
       <MapContainer 
         center={center} 
         zoom={12} 
@@ -94,17 +119,24 @@ export const MapView: React.FC<MapViewProps> = ({ rooms }) => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           className="map-tiles"
         />
-        {validRooms.map(room => (
-          <Marker 
-            key={room.id} 
-            position={[room.latitude, room.longitude]}
-            icon={createPriceIcon(room.rent_amount)}
-          >
-            <Popup className="room-popup group/popup" autoPanPadding={[50, 50]}>
-              <RoomCard room={room} compact />
-            </Popup>
-          </Marker>
-        ))}
+        {validRooms.map(room => {
+          // Simulate travel time based on distance from center (mock office)
+          const officeLoc = { lat: 12.9716, lng: 77.5946 };
+          const dist = Math.sqrt(Math.pow(room.latitude - officeLoc.lat, 2) + Math.pow(room.longitude - officeLoc.lng, 2)) * 100;
+          const travelTime = Math.round(15 + (dist * 2));
+
+          return (
+            <Marker 
+              key={room.id} 
+              position={[room.latitude, room.longitude]}
+              icon={createPriceIcon(room.rent_amount, commuteMode ? travelTime : undefined)}
+            >
+              <Popup className="room-popup group/popup" autoPanPadding={[50, 50]}>
+                <RoomCard room={room} compact />
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
       
       {/* Global styles for the leafleft popup to remove its default padding and style cleanly */}

@@ -129,9 +129,11 @@
 - Verified resident tips for areas like HSR Layout, Indiranagar, Whitefield, Koramangala
 - Color-coded by locality
 
-### Coming Soon Section
-- **Verified Tenant Profiles** — Under development banner
-- **Cities Adding Soon** — Waitlist cards for Hyderabad, NCR, Chennai with grayscale images
+### 🛡️ Verified Trust Era
+- **Aadhaar-Linked KYC:** Real-time identity verification simulation for instant trust.
+- **Verification Badging:** Verified status badges on landlord profiles and room cards.
+- **Tenant Rent Transport:** Digital "Rental Passport" generation containing verifiable payment history and Bhoomi Scores.
+- **Cities Adding Soon** — Waitlist cards for Hyderabad, NCR, Chennai with grayscale images.
 
 ---
 
@@ -148,15 +150,16 @@
 - Price display: `₹XX,XXX / month`
 - Status badges: Room Type, Furnished/Unfurnished, Available Now (animated pulse dot)
 
-### Bhoomi Score (Trust Score)
-- Algorithmically calculated trust grade (A+, A, B+, B)
-- Score factors: furnished status, amenity count, KYC verification
-- Visual progress bar (5-segment)
+### Bhoomi Score 2.0 (Asset Intelligence)
+- **Numeric Scoring Model:** Dynamic 300-900 scale (standardized credit-style) based on rental ledger history.
+- **Intelligence Factors:** Payment consistency, tenure length, identity verification, and property amenities.
+- **Elite Status:** Automated "Elite Tier" badging for users/listings with 750+ score.
 
-### Commute Compatibility Calculator
-- Input workplace address (e.g., "Manyata Tech Park")
-- Dynamic estimated commute time during peak hours
-- Mock calculation based on locality hashing
+### Locality Intelligence 2.0 (Commute Predictor)
+- **Interactive CommuteWidget:** Real-time peak-hour travel estimation between properties and user-provided destinations.
+- **Multi-Modal Data:** Support for Car, Bike, and Public Transit calculation logic.
+- **Map Correlation:** "Commute Mode" toggle on the Discovery Map that visualizes travel times for every listing instantly.
+- **Hub Proximity:** Metadata tracking for nearest Metro and Bus hubs.
 
 ### Amenities Grid
 - Icon-mapped amenity list using Material Symbols
@@ -361,19 +364,13 @@ Four tabs with icon + label:
 
 ---
 
-## 9. 🪪 Digital Estate Dossier
+## 10. 🛂 Tenant Rent Transport (Rental Passport)
 
-### Printable Tenant Profile
-- Premium document layout with REHWAS branding
-- Unique Dossier ID (e.g., RH-X4F2K9)
-- Tenant photo placeholder
-- Full name, phone number
-- KYC Verified and Registered Resident badges
-- Stay information: move-in date, property address
-- Financial standing: "Bhoomi Rent Status: PRIME"
-- Verification hash footer
-- Trusted certification stamp
-- `@media print` optimized — hidden on screen, visible only during print
+### Digital Rental Passport
+- **Verifiable Credential:** A premium, printable resume (DigitalCertificate) of rental history.
+- **Score Portability:** Tenants can carry their Bhoomi Score from one rental to the next.
+- **Landlord Trust:** Guaranteed financial standing certificates to bypass high security deposits.
+- **Verification Hash:** Secure document footprint for integrity.
 
 ---
 

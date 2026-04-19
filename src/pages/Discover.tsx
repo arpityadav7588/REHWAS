@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useRooms } from '@/hooks/useRooms';
 import { FilterPanel } from '@/components/FilterPanel';
@@ -16,7 +16,7 @@ import { Search, Map as MapIcon, List as ListIcon, X } from 'lucide-react';
  * `md:hidden` - hides mobile tabs and filter drawer buttons on desktop.
  */
 export default function Discover() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { rooms, fetchRooms, loading } = useRooms();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');

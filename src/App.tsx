@@ -9,6 +9,7 @@ import AddRoom from '@/pages/AddRoom';
 import Discover from '@/pages/Discover';
 import RoomDetail from '@/pages/RoomDetail';
 import LandlordDashboard from '@/pages/LandlordDashboard';
+import Profile from '@/pages/Profile';
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ function App() {
                 <Route path="/room/:id" element={<RoomDetail />} />
                 <Route path="/dashboard" element={<LandlordDashboard />} />
                 <Route path="/add-room" element={<AddRoom />} />
+                <Route path="/profile" element={<Profile />} />
                 <Route path="/login" element={<Login />} />
               </Routes>
             </main>

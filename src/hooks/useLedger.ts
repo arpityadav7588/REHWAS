@@ -145,6 +145,38 @@ export const useLedger = () => {
     return { error };
   };
 
+  /**
+   * Calculates the Bhoomi Score for a specific tenant based on their ledger history.
+   * WHAT IT DOES: Analyzes past payments and computes a numeric score (300-900).
+   * ANALOGY: A credit rating bureau calculating your credit score based on loan repayments.
+   */
+  const calculateBhoomiScore = async (tenantProfileId: string) => {
+    // 1. Fetch all ledger entries for this profile across all properties
+    const { data: history } = await supabase
+      .from('rent_ledger')
+      .select('status, amount')
+      .eq('tenant_profile_id', tenantProfileId); // Assuming we added this field or join
+
+    if (!history) return 400;
+
+    let score = 400; // Base score
+    history.forEach(entry => {
+      if (entry.status === 'paid') score += 15;
+      else if (entry.status === 'unpaid') score -= 10;
+    });
+
+    // 2. Clamp between 300 and 900
+    const finalScore = Math.min(Math.max(score, 300), 900);
+
+    // 3. Update profile
+    await supabase
+      .from('profiles')
+      .update({ bhoomi_score: finalScore })
+      .eq('id', tenantProfileId);
+
+    return finalScore;
+  };
+
   return {
     loading,
     fetchLedger,
@@ -152,6 +184,7 @@ export const useLedger = () => {
     updateLedgerEntry,
     createLedgerEntries,
     getMonthlyTotal,
-    applyBulkUtilityBill
+    applyBulkUtilityBill,
+    calculateBhoomiScore
   };
 };

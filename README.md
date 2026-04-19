@@ -7,10 +7,12 @@ REHWAS is a premium, broker-free rental platform designed to bring transparency 
 ## 🚀 Key Value Propositions
 
 - **100% Broker-Free:** Direct communication between owners and seekers.
-- **Smart Map Discovery:** Visual, locality-based search with real-time price pins.
+- **Smart Map Discovery:** Visual, locality-based search with real-time price pins and **Commute Predictors**.
+- **Aadhaar-Linked Trust:** Instant identity verification (KYC) for landlords and tenants.
+- **Bhoomi Score 2.0:** Dynamic 300-900 credit-style scoring based on rental history.
+- **Tenant Rent Transport:** Move-in digital certificates (Rental Passports) to bridge trust across properties.
 - **KhataBook for Rent:** Advanced digital ledger for landlords to track rent, arrears, and utilities.
 - **Urja Utility Splitter:** Automated building-wide utility bill splitting for shared meters.
-- **Digital Estate Dossier:** Exportable, professional tenant profiles for simplified move-ins.
 
 ---
 

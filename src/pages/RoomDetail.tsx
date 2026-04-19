@@ -13,6 +13,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { format, parseISO } from 'date-fns';
 import { ChatWindow } from '@/components/ChatWindow';
+import { CommuteWidget } from '@/components/CommuteWidget';
 
 interface RoomWithLandlord extends Room {
   profiles: {
@@ -155,6 +156,8 @@ export default function RoomDetail() {
     setSendingRequest(true);
     const content = `Visit request for ${visitDate} - ${visitTime}. ${visitMessage}`;
     
+    if (!room) return;
+
     const { error } = await supabase.from('messages').insert([{
       room_id: room.id,
       sender_id: profile.id,
@@ -263,26 +266,19 @@ export default function RoomDetail() {
               </div>
 
               {/* BHOOMI SCORE (Asset Trust Score) */}
-              <div className="bg-white/40 backdrop-blur-xl border-2 border-primary/20 p-5 rounded-[2rem] flex flex-col items-center justify-center min-w-[140px] shadow-lg shadow-primary/5 hover:scale-105 transition-all">
-                <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">Bhoomi Score</span>
-                <div className="text-4xl font-black text-dark tracking-tighter">
-                  {(() => {
-                    let score = 70;
-                    if (room.furnished) score += 10;
-                    score += (room.amenities?.length || 0) * 2;
-                    if (room.profiles?.kyc_verified) score += 10;
-                    const grade = score > 90 ? 'A+' : score > 80 ? 'A' : score > 70 ? 'B+' : 'B';
-                    return (
-                      <div className="flex flex-col items-center">
-                         <span>{grade}</span>
-                         <div className="flex gap-0.5 mt-1">
-                            {[1, 2, 3, 4, 5].map(s => (
-                              <div key={s} className={`h-1 w-3 rounded-full ${s <= (score/20) ? 'bg-brand' : 'bg-slate-200'}`}></div>
-                            ))}
-                         </div>
-                      </div>
-                    );
-                  })()}
+              <div className="bg-slate-900 border-2 border-emerald-500/20 p-5 rounded-[2.5rem] flex flex-col items-center justify-center min-w-[160px] shadow-2xl shadow-emerald-500/10 hover:scale-105 transition-all relative overflow-hidden group">
+                <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1 relative z-10">Bhoomi 2.0</span>
+                <div className="flex flex-col items-center relative z-10">
+                  <span className="text-4xl font-black text-white tracking-tighter leading-none">
+                    {room.bhoomi_score || 745}
+                  </span>
+                  <div className="flex gap-1 mt-2">
+                    {[1, 2, 3, 4].map(s => (
+                      <div key={s} className={`h-1 w-4 rounded-full ${(room.bhoomi_score || 745) > (300 + s*150) ? 'bg-emerald-500' : 'bg-slate-700'}`}></div>
+                    ))}
+                  </div>
+                  <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase tracking-widest">Asset Trust Index</p>
                 </div>
               </div>
             </div>
@@ -322,47 +318,7 @@ export default function RoomDetail() {
               </section>
 
               {/* COMMUTE COMPATIBILITY (Dynamic Score) */}
-              <section className="bg-gradient-to-br from-indigo-50 to-white p-6 md:p-8 rounded-3xl shadow-[0_4px_40px_rgba(30,58,138,0.03)] border border-indigo-100/50">
-                <div className="flex items-center gap-3 mb-6">
-                   <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-                      <span className="material-symbols-outlined text-[20px]">directions_car</span>
-                   </div>
-                   <h3 className="font-headline font-bold text-xl text-dark">Commute Compatibility</h3>
-                </div>
-
-                <div className="space-y-6">
-                   <div className="relative group">
-                      <input 
-                        type="text" 
-                        placeholder="Enter your workplace e.g. Manyata Tech Park"
-                        className="w-full pl-12 pr-4 py-4 bg-white border-2 border-indigo-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all font-bold text-dark placeholder-slate-300"
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const resultEl = document.getElementById('commute-result');
-                          if (val.length > 3) {
-                            // A stable mock calculation based on locality name and destiny
-                            const hash = (val.length + room.locality.length) % 45;
-                            const time = 15 + hash;
-                            if (resultEl) resultEl.innerHTML = `<span class="text-indigo-600">${time} mins</span> during peak hours`;
-                          } else if (resultEl) {
-                            resultEl.innerHTML = 'Enter destination to calculate';
-                          }
-                        }}
-                      />
-                      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400 group-focus-within:text-indigo-600 transition-colors">
-                        near_me
-                      </span>
-                   </div>
-                   <div className="p-4 bg-white rounded-2xl border border-indigo-100 flex items-center gap-4">
-                      <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600">
-                         <span className="material-symbols-outlined">schedule</span>
-                      </div>
-                      <p id="commute-result" className="text-sm font-bold text-slate-500">
-                        Enter destination to calculate
-                      </p>
-                   </div>
-                </div>
-              </section>
+              <CommuteWidget room={room} />
 
               {/* Amenities */}
               <section className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-surface-container-low">
