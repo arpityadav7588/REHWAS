@@ -52,13 +52,21 @@ function MapResizer() {
 function MapAutoCenter({ rooms }: { rooms: Room[] }) {
   const map = useMap();
   useEffect(() => {
-    const validRooms = rooms.filter(r => r.latitude && r.longitude);
+    const validRooms = rooms.filter(r => 
+      typeof r.latitude === 'number' && 
+      typeof r.longitude === 'number' && 
+      !isNaN(r.latitude) && 
+      !isNaN(r.longitude)
+    );
+
     if (validRooms.length > 0) {
       if (validRooms.length === 1) {
         map.flyTo([validRooms[0].latitude, validRooms[0].longitude], 14, { duration: 1.5 });
       } else {
         const bounds = L.latLngBounds(validRooms.map(r => [r.latitude, r.longitude]));
-        map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
+        if (bounds.isValid()) {
+          map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
+        }
       }
     }
   }, [rooms, map]);
@@ -67,13 +75,86 @@ function MapAutoCenter({ rooms }: { rooms: Room[] }) {
 
 interface MapViewProps {
   rooms: Room[];
+  heatmapActive?: boolean;
+}
+
+/**
+ * Component to manage the Rent Price Heatmap overlays.
+ * WHAT IT DOES: Groups rooms by locality, calculates averages, and draws circles on the map.
+ */
+function HeatmapLayer({ rooms, active }: { rooms: Room[], active: boolean }) {
+  const map = useMap();
+  const circleLayersRef = React.useRef<L.Layer[]>([]);
+
+  useEffect(() => {
+    // 1. Cleanup existing layers
+    circleLayersRef.current.forEach(layer => layer.remove());
+    circleLayersRef.current = [];
+
+    if (!active || rooms.length === 0) return;
+
+    // 2. Group by locality
+    const localityMap = new Map<string, { lat: number[], lng: number[], rent: number[] }>();
+    
+    rooms.forEach(room => {
+      const loc = room.locality || 'Unknown';
+      if (!localityMap.has(loc)) {
+        localityMap.set(loc, { lat: [], lng: [], rent: [] });
+      }
+      const data = localityMap.get(loc)!;
+      data.lat.push(room.latitude);
+      data.lng.push(room.longitude);
+      data.rent.push(room.rent_amount);
+    });
+
+    // 3. Create circles for each locality
+    localityMap.forEach((data, locality) => {
+      const avgLat = data.lat.reduce((a, b) => a + b, 0) / data.lat.length;
+      const avgLng = data.lng.reduce((a, b) => a + b, 0) / data.lng.length;
+      const avgRent = data.rent.reduce((a, b) => a + b, 0) / data.rent.length;
+
+      let color = '#22C55E'; // Green
+      let tier = 'Budget zone';
+      if (avgRent > 20000) { color = '#EF4444'; tier = 'Luxury'; }
+      else if (avgRent > 14000) { color = '#F97316'; tier = 'Premium'; }
+      else if (avgRent > 8000) { color = '#F59E0B'; tier = 'Mid-range'; }
+
+      const circle = L.circle([avgLat, avgLng], {
+        radius: 800,
+        fillColor: color,
+        fillOpacity: 0.35,
+        stroke: false,
+      })
+      .bindTooltip(`
+        <div class="px-3 py-2 bg-slate-900 text-white rounded-xl shadow-xl border border-white/10">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">${locality}</p>
+          <p class="text-sm font-black whitespace-nowrap italic">Avg ₹${Math.round(avgRent).toLocaleString()}/mo</p>
+          <p class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">${data.rent.length} verified listings • ${tier}</p>
+        </div>
+      `, { sticky: true, className: 'heatmap-tooltip', opacity: 0.95 });
+
+      circle.addTo(map);
+      circleLayersRef.current.push(circle);
+    });
+
+    /**
+     * @cleanup Logic:
+     * Storing circle references in a ref allows us to remove them cleanly from the map
+     * when the 'active' toggle is switched off or rooms change, preventing layer leakage.
+     */
+    return () => {
+      circleLayersRef.current.forEach(layer => layer.remove());
+      circleLayersRef.current = [];
+    };
+  }, [rooms, active, map]);
+
+  return null;
 }
 
 /**
  * MapView component to display rooms on a Leaflet map.
- * WHAT IT DOES: Renders a map with custom markers for each room based on latitude and longitude.
  */
-export const MapView: React.FC<MapViewProps> = ({ rooms }) => {
+export const MapView: React.FC<MapViewProps> = ({ rooms, heatmapActive = false }) => {
   const [commuteMode, setCommuteMode] = useState(false);
   const defaultCenter: [number, number] = [12.9716, 77.5946]; // Bengaluru
   const validRooms = rooms.filter(r => r.latitude && r.longitude);
@@ -90,7 +171,6 @@ export const MapView: React.FC<MapViewProps> = ({ rooms }) => {
     );
   }
 
-  // Adjust center if there are rooms
   const center = validRooms.length > 0 ? [validRooms[0].latitude, validRooms[0].longitude] as [number, number] : defaultCenter;
 
   return (
@@ -106,6 +186,31 @@ export const MapView: React.FC<MapViewProps> = ({ rooms }) => {
          </button>
       </div>
 
+      {/* HEATMAP LEGEND */}
+      {heatmapActive && (
+        <div className="absolute bottom-6 left-6 z-[400] animate-in slide-in-from-left duration-300">
+           <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl shadow-2xl border border-white flex flex-col gap-3">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2 mb-1">Rent Heat Legend</p>
+              <div className="flex flex-col gap-2">
+                {[
+                  { color: '#22C55E', label: 'Under ₹8k', sub: 'Budget zone' },
+                  { color: '#F59E0B', label: '₹8k–14k', sub: 'Mid-range' },
+                  { color: '#F97316', label: '₹14k–20k', sub: 'Premium' },
+                  { color: '#EF4444', label: 'Above ₹20k', sub: 'Luxury' }
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }}></div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-900 leading-none">{item.label}</p>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{item.sub}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+           </div>
+        </div>
+      )}
+
       <MapContainer 
         center={center} 
         zoom={12} 
@@ -114,13 +219,13 @@ export const MapView: React.FC<MapViewProps> = ({ rooms }) => {
       >
         <MapResizer />
         <MapAutoCenter rooms={validRooms} />
+        <HeatmapLayer rooms={validRooms} active={heatmapActive} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           className="map-tiles"
         />
         {validRooms.map(room => {
-          // Simulate travel time based on distance from center (mock office)
           const officeLoc = { lat: 12.9716, lng: 77.5946 };
           const dist = Math.sqrt(Math.pow(room.latitude - officeLoc.lat, 2) + Math.pow(room.longitude - officeLoc.lng, 2)) * 100;
           const travelTime = Math.round(15 + (dist * 2));
@@ -130,6 +235,7 @@ export const MapView: React.FC<MapViewProps> = ({ rooms }) => {
               key={room.id} 
               position={[room.latitude, room.longitude]}
               icon={createPriceIcon(room.rent_amount, commuteMode ? travelTime : undefined)}
+              opacity={heatmapActive ? 0.4 : 1}
             >
               <Popup className="room-popup group/popup" autoPanPadding={[50, 50]}>
                 <RoomCard room={room} compact />
@@ -139,7 +245,6 @@ export const MapView: React.FC<MapViewProps> = ({ rooms }) => {
         })}
       </MapContainer>
       
-      {/* Global styles for the leafleft popup to remove its default padding and style cleanly */}
       <style>{`
         .leaflet-popup-content-wrapper { padding: 0 !important; overflow: hidden; border-radius: 16px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important; background: transparent !important; }
         .leaflet-popup-content { margin: 0 !important; width: auto !important; }
@@ -148,6 +253,9 @@ export const MapView: React.FC<MapViewProps> = ({ rooms }) => {
         .room-popup .leaflet-popup-close-button:hover { background: rgba(0,0,0,0.8) !important; color: white !important; }
         .leaflet-control-attribution { background: rgba(255,255,255,0.7) !important; backdrop-filter: blur(4px); border-top-left-radius: 8px; font-weight: 500; font-size: 10px !important; }
         .map-tiles { filter: contrast(1.05) brightness(1.02) saturate(1.1); }
+        .heatmap-tooltip { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+        .heatmap-tooltip .leaflet-tooltip-tip { display: none; }
+        .custom-price-marker { transition: opacity 0.5s ease-in-out; }
       `}</style>
     </div>
   );

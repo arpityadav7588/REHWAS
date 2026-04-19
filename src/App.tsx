@@ -10,6 +10,10 @@ import Discover from '@/pages/Discover';
 import RoomDetail from '@/pages/RoomDetail';
 import LandlordDashboard from '@/pages/LandlordDashboard';
 import Profile from '@/pages/Profile';
+import { RentReceipt } from '@/components/RentReceipt';
+import { MoveInReportView } from '@/components/MoveInReportView';
+import { RentBuddy } from '@/components/RentBuddy';
+
 
 const queryClient = new QueryClient();
 
@@ -34,9 +38,13 @@ function App() {
                 <Route path="/add-room" element={<AddRoom />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/receipt/:id" element={<RentReceipt />} />
+                <Route path="/move-in-report/:id" element={<MoveInReportView />} />
               </Routes>
             </main>
+            <RentBuddy />
           </div>
+
         </AuthProvider>
       </Router>
       <Toaster position="top-right" />

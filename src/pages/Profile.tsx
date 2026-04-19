@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLedger } from '@/hooks/useLedger';
+import { supabase } from '@/lib/supabase';
 import { DigitalCertificate } from '@/components/DigitalCertificate';
 import { VerificationCenter } from '@/components/VerificationCenter';
-import { Shield, MapPin, Phone, LogOut, Award, Navigation } from 'lucide-react';
+import { Shield, Phone, LogOut, Award, FileText, ArrowRight } from 'lucide-react';
+import { TenantRentScore } from '@/components/TenantRentScore';
 import { useNavigate } from 'react-router-dom';
 import type { RentLedger } from '@/types';
 
@@ -16,6 +18,7 @@ export default function Profile() {
   const { profile, signOut, loading: authLoading } = useAuth();
   const { fetchLedger } = useLedger();
   const [history, setHistory] = useState<RentLedger[]>([]);
+  const [pendingReports, setPendingReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -27,10 +30,33 @@ export default function Profile() {
 
     const loadHistory = async () => {
       if (profile) {
-        // In a real app, tenants would fetch their own history
-        // For demo, we might fetch history across properties
+        // Fetch this user's ledger history (used for DigitalCertificate)
         const { data } = await fetchLedger(profile.id);
         if (data) setHistory(data);
+        
+        // Fetch pending move-in reports for tenant signature
+        try {
+          const tenantRow = await supabase
+            .from('tenants')
+            .select('id')
+            .eq('tenant_profile_id', profile.id)
+            .single();
+
+          if (tenantRow.data?.id) {
+            const { data: reports } = await supabase
+              .from('move_in_reports')
+              .select('id, rooms(title)')
+              .eq('report_status', 'pending_tenant')
+              .eq('tenant_id', tenantRow.data.id);
+            if (reports) setPendingReports(reports);
+          }
+        } catch {
+          // Not a tenant on any property — ignore silently
+        }
+
+        setLoading(false);
+      } else if (!authLoading) {
+        // No profile and auth is done — stop spinner
         setLoading(false);
       }
     };
@@ -82,9 +108,30 @@ export default function Profile() {
           </div>
        </div>
 
-       <div className="max-w-4xl mx-auto px-4 -mt-32">
-          {/* KYC Section */}
-          <VerificationCenter />
+        <div className="max-w-4xl mx-auto px-4 -mt-32 space-y-8">
+           {/* Notifications */}
+           {pendingReports.map(report => (
+             <div key={report.id} className="bg-indigo-600 p-6 rounded-[2.5rem] text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-indigo-200 animate-in slide-in-from-top-4 duration-500">
+                <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                      <FileText size={24} />
+                   </div>
+                   <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Pending Action Required</p>
+                      <h3 className="text-lg font-black tracking-tight">Move-in Inspection Report for {report.rooms?.title}</h3>
+                   </div>
+                </div>
+                <button 
+                  onClick={() => navigate(`/move-in-report/${report.id}`)}
+                  className="bg-white text-indigo-600 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-indigo-50 active:scale-95 transition-all"
+                >
+                  Review & Sign 📋
+                </button>
+             </div>
+           ))}
+
+           {/* KYC Section */}
+           <VerificationCenter />
 
           {/* Rental Passport Section (Bhoomi 2.0) */}
           <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-xl shadow-slate-200/50 mb-12">
@@ -99,11 +146,32 @@ export default function Profile() {
                      This is your verifiable credit asset. Landlords use this to bypass security deposits and instant-verify your occupancy.
                   </p>
                 </div>
+                {/* Score Summary Moved into TenantRentScore full view */}
+             </div>
+             
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start mb-12">
+                <TenantRentScore tenantId={profile.id} />
                 
-                <div className="flex flex-col items-center p-6 bg-slate-50 rounded-[2rem] border border-slate-100 min-w-[160px]">
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Bhoomi Score</span>
-                   <span className="text-5xl font-black text-slate-900 tracking-tighter">{profile.bhoomi_score || 745}</span>
-                   <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mt-2">Top 5% Tenant</span>
+                <div className="flex flex-col gap-6">
+                   <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-[2.5rem]">
+                      <h3 className="text-xl font-black text-emerald-900 mb-2">Score Pulse 📈</h3>
+                      <p className="text-emerald-800/70 font-medium text-sm mb-4">
+                         Your rent score is a dynamic asset. Paying rent before the 7th of every month helps you build a premium reputation.
+                      </p>
+                      <button 
+                        onClick={() => navigate('/discover')}
+                        className="flex items-center gap-2 text-emerald-600 font-black text-xs uppercase tracking-widest hover:gap-4 transition-all"
+                      >
+                        Pay rent on time to improve your score <ArrowRight size={16} />
+                      </button>
+                   </div>
+                   
+                   <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-[2.5rem]">
+                      <h3 className="text-xl font-black text-indigo-900 mb-2">Instant Approval ⚡</h3>
+                      <p className="text-indigo-800/70 font-medium text-sm">
+                         Tenants with an A+ score are 3x more likely to get their visit requests accepted by premium landlords.
+                      </p>
+                   </div>
                 </div>
              </div>
 

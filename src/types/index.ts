@@ -80,6 +80,7 @@ export interface RentLedger {
   arrears?: number;
   status: 'paid' | 'unpaid' | 'partial';
   paid_on?: string;
+  payment_mode?: 'cash' | 'upi' | 'bank';
   notes?: string;
 }
 
@@ -95,4 +96,58 @@ export interface Message {
   receiver_id: string;
   content: string;
   created_at: string;
+}
+
+/**
+ * Represents a property-related expense record.
+ */
+export interface Expense {
+  id: string;
+  landlord_id: string;
+  room_id?: string | null;
+  category: 'maintenance' | 'tax' | 'insurance' | 'repair' | 'other';
+  amount: number;
+  description: string;
+  expense_date: string;
+  created_at: string;
+}
+
+/**
+ * Represents a monthly Profit & Loss summary.
+ */
+export interface PLSummary {
+  month: string;
+  income: number;
+  expenses: number;
+  net: number;
+}
+
+export interface MoveInReport {
+  id: string;
+  tenant_id: string;
+  room_id: string;
+  landlord_id: string;
+  photos: string[];
+  notes?: string;
+  tenant_notes?: string;
+  checklist: InspectionChecklist;
+  meter_reading?: string;
+  landlord_signed_at: string;
+  tenant_signed_at?: string;
+  report_status: 'pending_tenant' | 'completed';
+  created_at: string;
+}
+
+export interface InspectionChecklist {
+  electricity_working: boolean;
+  water_working: boolean;
+  wifi_connected: boolean;
+  ac_working?: boolean;
+  locks_functional: boolean;
+  keys_handed_over: {
+    main_door: boolean;
+    room: boolean;
+    mailbox: boolean;
+  };
+  deposit_receipt_given: boolean;
 }

@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useRooms } from '@/hooks/useRooms';
 import { useLedger } from '@/hooks/useLedger';
+import { usePL } from '@/hooks/usePL';
+import { MoveInReportModal } from '@/components/MoveInReportModal';
 import { RentLedgerTable } from '@/components/RentLedgerTable';
 import { RoomCard } from '@/components/RoomCard';
 import type { Room, Tenant } from '@/types';
@@ -11,10 +13,13 @@ import toast from 'react-hot-toast';
 import { format, parseISO, subMonths } from 'date-fns';
 import { 
   Home, Users, BookOpen, Bell, Plus, IndianRupee, Key, 
-  DoorOpen, Edit, Trash2, ShieldAlert, Phone, Send, FileText, Download, X
+  DoorOpen, Edit, Trash2, ShieldAlert, Phone, Send, FileText, Download, X,
+  TrendingUp, BarChart3, PieChart, Receipt, Camera
 } from 'lucide-react';
 import { DigitalDossier } from '@/components/DigitalDossier';
 import { VerificationCenter } from '@/components/VerificationCenter';
+import { TenantRentScore } from '@/components/TenantRentScore';
+
 
 /**
  * Extended Tenant Type for Dashboard
@@ -35,13 +40,21 @@ export default function LandlordDashboard() {
   const { fetchLedger, getMonthlyTotal, createLedgerEntries, updateLedgerEntry, applyBulkUtilityBill } = useLedger();
 
   // Selected Tab State
-  const [activeTab, setActiveTab] = useState<'rooms' | 'tenants' | 'ledger' | 'reminders'>('rooms');
+  const [activeTab, setActiveTab] = useState<'rooms' | 'tenants' | 'ledger' | 'reminders' | 'pl'>('rooms');
   
   // Data States
   const [loading, setLoading] = useState(true);
   const [tenants, setTenants] = useState<TenantExtended[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<RentLedger[]>([]);
   const [rentCollected, setRentCollected] = useState(0);
+  
+  // P&L State
+  const { fetchPLData, addExpense, deleteExpense, loading: plLoading } = usePL();
+  const [plSummary, setPlSummary] = useState<any[]>([]);
+  const [allExpenses, setAllExpenses] = useState<any[]>([]);
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isMoveInReportModalOpen, setIsMoveInReportModalOpen] = useState(false);
+  const [selectedMoveInTenant, setSelectedMoveInTenant] = useState<any>(null);
 
   // Dossier State
   const [selectedDossierTenant, setSelectedDossierTenant] = useState<any>(null);
@@ -61,6 +74,17 @@ export default function LandlordDashboard() {
   const [tenantMoveIn, setTenantMoveIn] = useState('');
   const [tenantRent, setTenantRent] = useState('');
   const [addingTenant, setAddingTenant] = useState(false);
+  const [foundTenantProfileId, setFoundTenantProfileId] = useState<string | null>(null);
+  const [checkingTenant, setCheckingTenant] = useState(false);
+
+
+  // New Expense State
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState<'maintenance' | 'tax' | 'insurance' | 'repair' | 'other'>('maintenance');
+  const [expenseDescription, setExpenseDescription] = useState('');
+  const [expenseDate, setExpenseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [expenseRoomId, setExpenseRoomId] = useState<string | null>(null);
+  const [addingExpense, setAddingExpense] = useState(false);
 
   // Load Everything
   const loadDashboardData = async () => {
@@ -94,6 +118,116 @@ export default function LandlordDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadPLData = async () => {
+    if (!profile) return;
+    const { summary, rawExpenses } = await fetchPLData(profile.id, 6);
+    setPlSummary(summary);
+    setAllExpenses(rawExpenses);
+  };
+
+  // Chart Logic (CDN injection)
+  useEffect(() => {
+    if (activeTab === 'pl') {
+      loadPLData();
+      
+      const scriptId = 'chart-js-cdn';
+      if (!document.getElementById(scriptId)) {
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
+        script.onload = () => renderChart();
+        document.body.appendChild(script);
+      } else {
+        setTimeout(renderChart, 300);
+      }
+    }
+  }, [activeTab]);
+
+  const renderChart = () => {
+    const canvas = document.getElementById('plChart') as HTMLCanvasElement;
+    if (!canvas || !plSummary.length || !(window as any).Chart) return;
+
+    // Destroy existing chart if it exists
+    const existingChart = (window as any).Chart.getChart(canvas);
+    if (existingChart) existingChart.destroy();
+
+    new (window as any).Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: plSummary.map(s => s.month),
+        datasets: [
+          {
+            label: 'Income',
+            data: plSummary.map(s => s.income),
+            backgroundColor: '#10B981', // emerald-500
+            borderRadius: 8,
+            barThickness: 24,
+          },
+          {
+            label: 'Expenses',
+            data: plSummary.map(s => s.expenses),
+            backgroundColor: '#F59E0B', // amber-500
+            borderRadius: 8,
+            barThickness: 24,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1e293b',
+            padding: 12,
+            titleFont: { size: 14, weight: 'bold' },
+            bodyFont: { size: 13 },
+            callbacks: {
+              label: (context: any) => ` ₹${context.raw.toLocaleString('en-IN')}`
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, border: { display: false } },
+          y: { 
+            grid: { color: '#f1f5f9' }, 
+            border: { display: false },
+            ticks: {
+              callback: (value: any) => '₹' + value.toLocaleString('en-IN')
+            }
+          }
+        }
+      }
+    });
+  };
+
+  const handleAddExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile) return;
+    
+    setAddingExpense(true);
+    const { error } = await addExpense({
+      landlord_id: profile.id,
+      room_id: expenseRoomId,
+      category: expenseCategory,
+      amount: Number(expenseAmount),
+      description: expenseDescription,
+      expense_date: expenseDate,
+    });
+
+    if (error) {
+      toast.error('Failed to record expense');
+    } else {
+      toast.success(`Expense recorded ₹${expenseAmount} for ${expenseCategory}`);
+      setIsExpenseModalOpen(false);
+      loadPLData();
+      // Reset
+      setExpenseAmount('');
+      setExpenseDescription('');
+    }
+    setAddingExpense(false);
   };
 
   useEffect(() => {
@@ -147,8 +281,30 @@ export default function LandlordDashboard() {
       loadDashboardData();
     }
   };
+  
+  // Lookup tenant by phone
+  useEffect(() => {
+    const lookupTenant = async () => {
+      if (tenantPhone.length === 10) {
+        setCheckingTenant(true);
+        const { data } = await supabase.from('profiles').select('id, full_name').eq('phone', tenantPhone).single();
+        if (data) {
+          setFoundTenantProfileId(data.id);
+          // Auto-fill name if found
+          if (!tenantName) setTenantName(data.full_name);
+        } else {
+          setFoundTenantProfileId(null);
+        }
+        setCheckingTenant(false);
+      } else {
+        setFoundTenantProfileId(null);
+      }
+    };
+    lookupTenant();
+  }, [tenantPhone]);
 
   const handleAddTenant = async (e: React.FormEvent) => {
+
     e.preventDefault();
     if (!tenantRoomId || !tenantName || !tenantPhone || !tenantRent || !tenantMoveIn) {
       toast.error('Please fill all fields');
@@ -263,6 +419,7 @@ export default function LandlordDashboard() {
            { id: 'tenants', label: 'Tenants', icon: Users },
            { id: 'ledger', label: 'Rent Ledger', icon: BookOpen },
            { id: 'reminders', label: 'Reminders', icon: Bell },
+           { id: 'pl', label: 'P&L 📊', icon: TrendingUp },
          ].map((tab) => (
            <button 
              key={tab.id}
@@ -361,9 +518,15 @@ export default function LandlordDashboard() {
                    {tenants.map(t => (
                      <tr key={t.id} className="hover:bg-gray-50/50 transition-colors font-medium text-gray-800">
                         <td className="p-5">
-                          <p className="font-bold text-gray-900">{t.profiles?.full_name || 'Unknown'}</p>
-                          <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5"><Phone size={12}/> {t.profiles?.phone || 'No phone'}</p>
+                          <div className="flex items-center gap-3">
+                            <div>
+                              <p className="font-bold text-gray-900">{t.profiles?.full_name || 'Unknown'}</p>
+                              <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5"><Phone size={12}/> {t.profiles?.phone || 'No phone'}</p>
+                            </div>
+                            <TenantRentScore tenantId={t.tenant_profile_id} compact />
+                          </div>
                         </td>
+
                         <td className="p-5 flex items-center gap-2">
                            <Home size={16} className="text-gray-400" />
                            {t.rooms?.title || 'Unknown Room'}
@@ -373,6 +536,22 @@ export default function LandlordDashboard() {
                         </td>
                         <td className="p-5 font-extrabold text-dark text-lg">₹{t.rent_amount.toLocaleString()}</td>
                         <td className="p-5 text-right flex items-center justify-end gap-2">
+                           <button 
+                             onClick={() => {
+                               setSelectedMoveInTenant({
+                                 id: t.id,
+                                 profileId: t.tenant_profile_id,
+                                 tenantName: t.profiles?.full_name || 'Tenant',
+                                 roomTitle: t.rooms?.title || 'Room',
+                                 roomId: t.room_id,
+                                 landlordId: profile?.id
+                               });
+                               setIsMoveInReportModalOpen(true);
+                             }}
+                             className="text-indigo-600 hover:text-indigo-700 font-bold text-xs bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition-all border border-indigo-100 flex items-center gap-2"
+                           >
+                             <Camera size={14} /> Move-in Report
+                           </button>
                            <button 
                              onClick={() => {
                                 setSelectedDossierTenant({
@@ -542,6 +721,15 @@ export default function LandlordDashboard() {
                     required placeholder="9876543210" pattern="[0-9]{10}"
                     className="w-full px-4 py-3 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all font-medium text-gray-800 text-base"
                   />
+                  {checkingTenant && (
+                    <p className="text-[10px] font-bold text-blue-600 mt-1 animate-pulse uppercase tracking-[0.2em]">Checking REHWAS ecosystem...</p>
+                  )}
+                  {foundTenantProfileId && (
+                    <div className="mt-2 animate-in fade-in slide-in-from-top-1">
+                      <div className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">REHWAS Verified User Found!</div>
+                      <TenantRentScore tenantId={foundTenantProfileId} compact />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-4">
@@ -705,6 +893,222 @@ export default function LandlordDashboard() {
       )}
       {/* Hidden Digital Dossier for Printing */}
       {selectedDossierTenant && <DigitalDossier tenant={selectedDossierTenant} />}
+      {/* TAB 5: P&L DASHBOARD */}
+      {activeTab === 'pl' && (
+        <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                <div className="flex items-center gap-3 text-emerald-600 mb-4">
+                   <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center text-green-600">
+                      <TrendingUp size={20} />
+                   </div>
+                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-900/60 font-sans">Monthly Income</span>
+                </div>
+                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic">₹{plSummary[plSummary.length - 1]?.income.toLocaleString() || '0'}</h3>
+                <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase font-sans">Rent + Utilities Collected</p>
+             </div>
+
+             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                <div className="flex items-center gap-3 text-amber-600 mb-4">
+                   <div className="w-10 h-10 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
+                      <Receipt size={20} />
+                   </div>
+                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-900/60 font-sans">Total Expenses</span>
+                </div>
+                <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic">₹{plSummary[plSummary.length - 1]?.expenses.toLocaleString() || '0'}</h3>
+                <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase font-sans">Maintenance, Tax & Repairs</p>
+             </div>
+
+             <div className={`p-8 rounded-[2.5rem] border shadow-lg shadow-black/5 transition-all ${
+                (plSummary[plSummary.length - 1]?.net || 0) >= 0 
+                ? 'bg-emerald-900 border-emerald-800 text-white' 
+                : 'bg-rose-900 border-rose-800 text-white'
+             }`}>
+                <div className="flex items-center gap-3 mb-4 opacity-70">
+                   <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center">
+                      <BarChart3 size={20} />
+                   </div>
+                   <span className="text-[10px] font-black uppercase tracking-[0.2em] font-sans">Net Cash Flow</span>
+                </div>
+                <h3 className="text-4xl font-black tracking-tighter italic">₹{plSummary[plSummary.length - 1]?.net.toLocaleString() || '0'}</h3>
+                <p className="text-[10px] font-bold opacity-50 mt-3 uppercase font-sans">Current Month Bottom Line</p>
+             </div>
+          </div>
+
+          <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+             <div className="absolute top-0 right-0 p-10 flex items-center gap-8 print:hidden">
+                <div className="flex items-center gap-2">
+                   <div className="w-4 h-4 bg-emerald-500 rounded-lg shadow-sm"></div>
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-sans">Gross Income</span>
+                </div>
+                <div className="flex items-center gap-2">
+                   <div className="w-4 h-4 bg-amber-500 rounded-lg shadow-sm"></div>
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-sans">Expenses</span>
+                </div>
+             </div>
+             
+             <div className="mb-12">
+                <h2 className="text-3xl font-black tracking-tight text-slate-900 font-sans">Profitability Velocity 🧪</h2>
+                <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest font-sans">6-MONTH COMPARATIVE AUDIT</p>
+             </div>
+
+             <div className="h-[350px] w-full relative z-10">
+                <canvas id="plChart"></canvas>
+             </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-6 mb-8 print:hidden">
+             <button 
+               onClick={() => setIsExpenseModalOpen(true)}
+               className="flex-1 bg-slate-900 text-white py-7 rounded-[2.5rem] font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 group active:scale-[0.98] font-sans"
+             >
+                <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                   <Plus size={20} />
+                </div>
+                Record Expense
+             </button>
+
+             <button 
+               onClick={() => {
+                 const plTable = document.getElementById('pl-export-table');
+                 if (plTable) {
+                   plTable.style.display = 'block';
+                   setTimeout(() => {
+                     window.print();
+                     plTable.style.display = 'none';
+                   }, 200);
+                 } else {
+                    window.print();
+                 }
+               }}
+               className="flex-1 bg-white text-slate-900 border-2 border-slate-100 py-7 rounded-[2.5rem] font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-3 group shadow-sm active:scale-[0.98] font-sans"
+             >
+                <div className="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                   <Download size={20} />
+                </div>
+                Export for CA / ITR
+             </button>
+          </div>
+
+          <div id="pl-export-table" className="hidden print:block mt-24 bg-white text-slate-900 font-sans">
+             <div className="text-center mb-16 border-b-4 border-slate-900 pb-12">
+                <div className="flex items-center justify-center gap-4 mb-6">
+                  <div className="w-16 h-16 bg-slate-900 rounded-[2rem] flex items-center justify-center text-white">
+                    <TrendingUp size={36} />
+                  </div>
+                  <h1 className="text-5xl font-black tracking-tighter uppercase italic text-brand">REHWAS Audit Report</h1>
+                </div>
+                <p className="text-base font-black text-slate-400 uppercase tracking-[0.4em]">Chartered Accountant Portfolio Summary</p>
+                <p className="text-sm font-bold mt-6 text-slate-500">PERIOD: {plSummary[0]?.month} — {plSummary[plSummary.length-1]?.month}</p>
+             </div>
+
+             <table className="w-full border-collapse">
+                <thead>
+                   <tr className="bg-slate-50 border-y-2 border-slate-900 text-xs font-black uppercase tracking-widest text-slate-400">
+                      <th className="p-8 text-left">Statement Period</th>
+                      <th className="p-8 text-right">Gross Income (₹)</th>
+                      <th className="p-8 text-right">Operating Expenses (₹)</th>
+                      <th className="p-8 text-right">Net Liquidity (₹)</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y-2 divide-slate-100">
+                   {plSummary.map((s, i) => (
+                      <tr key={i} className="text-lg font-bold">
+                         <td className="p-8 text-slate-900">{s.month}</td>
+                         <td className="p-8 text-right text-emerald-600">+₹{s.income.toLocaleString()}</td>
+                         <td className="p-8 text-right text-amber-600">-₹{s.expenses.toLocaleString()}</td>
+                         <td className="p-8 text-right text-slate-900 font-black">₹{s.net.toLocaleString()}</td>
+                      </tr>
+                   ))}
+                </tbody>
+             </table>
+          </div>
+        </div>
+      )}
+
+      {/* RECORD EXPENSE MODAL */}
+      {isExpenseModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity" onClick={() => setIsExpenseModalOpen(false)}></div>
+          
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-300">
+            <div className="p-8 md:p-10 flex flex-col gap-8">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                   <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-900">
+                      <Receipt size={24} />
+                   </div>
+                   <h3 className="text-2xl font-black text-slate-900 tracking-tighter font-sans">Record Expense</h3>
+                </div>
+                <button 
+                  onClick={() => setIsExpenseModalOpen(false)} 
+                  className="bg-slate-50 hover:bg-slate-100 p-2 min-w-[44px] min-h-[44px] rounded-full text-slate-400 transition-colors flex items-center justify-center"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddExpense} className="flex flex-col gap-6">
+                <div>
+                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 font-sans">Spending Category</label>
+                   <div className="grid grid-cols-3 gap-2">
+                      {['maintenance', 'tax', 'insurance', 'repair', 'other'].map((cat: any) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setExpenseCategory(cat)}
+                          className={`py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all border-2 font-sans ${expenseCategory === cat ? 'bg-slate-900 border-slate-900 text-white' : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100'}`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                   </div>
+                </div>
+
+                <div>
+                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 font-sans">Payment Amount (₹)</label>
+                   <input 
+                     type="number" 
+                     value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)}
+                     required placeholder="0.00"
+                     className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:border-slate-900 outline-none transition-all font-black text-slate-900 text-2xl font-sans"
+                   />
+                </div>
+
+                <div>
+                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 font-sans">Description / Memo</label>
+                   <input 
+                     type="text" 
+                     value={expenseDescription} onChange={(e) => setExpenseDescription(e.target.value)}
+                     required placeholder="e.g. Lift AMC or Property Tax"
+                     className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:border-slate-900 outline-none transition-all font-bold text-slate-800 font-sans"
+                   />
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 font-sans">Transaction Date</label>
+                    <input 
+                      type="date" 
+                      value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)}
+                      required
+                      className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:border-slate-900 outline-none transition-all font-bold text-slate-800 font-sans"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={addingExpense}
+                  className={`w-full py-6 rounded-2xl font-black text-base uppercase tracking-widest transition-all shadow-xl font-sans ${addingExpense ? 'bg-slate-200 text-slate-400' : 'bg-brand text-white shadow-brand/20 hover:scale-[1.02] active:scale-95'}`}
+                >
+                  {addingExpense ? 'Finalizing Entry...' : 'Post to Ledger'}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

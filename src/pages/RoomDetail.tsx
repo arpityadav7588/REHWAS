@@ -6,7 +6,7 @@ import type { Room } from '@/types';
 import toast from 'react-hot-toast';
 import { RoomCard } from '@/components/RoomCard';
 import { 
-  X, Loader2
+  X, Loader2, FileText, MapPin, Zap
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
@@ -14,6 +14,8 @@ import 'leaflet/dist/leaflet.css';
 import { format, parseISO } from 'date-fns';
 import { ChatWindow } from '@/components/ChatWindow';
 import { CommuteWidget } from '@/components/CommuteWidget';
+import { TenantRentScore } from '@/components/TenantRentScore';
+
 
 interface RoomWithLandlord extends Room {
   profiles: {
@@ -79,6 +81,7 @@ export default function RoomDetail() {
   
   // Chat Drawer State
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [moveInReport, setMoveInReport] = useState<any>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -98,22 +101,35 @@ export default function RoomDetail() {
       if (error || !data) {
         toast.error('Room not found');
         navigate('/discover');
-        return;
+      } else {
+        setRoom(data as RoomWithLandlord);
+        
+        // Check for completed move-in reports associated with this room
+        const { data: reportData } = await supabase
+          .from('move_in_reports')
+          .select('id, created_at, report_status')
+          .eq('room_id', id)
+          .eq('report_status', 'completed')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (reportData) setMoveInReport(reportData);
       }
       
-      setRoom(data);
-      
       // Instantly fetch similar local properties in parallel logically
-      const { data: similar } = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('city', data.city)
-        .eq('room_type', data.room_type)
-        .eq('available', true)
-        .neq('id', data.id)
-        .limit(3);
-        
-      if (similar) setSimilarRooms(similar);
+      if (data) {
+        const { data: similar } = await supabase
+          .from('rooms')
+          .select('*')
+          .eq('city', data.city)
+          .eq('room_type', data.room_type)
+          .eq('available', true)
+          .neq('id', data.id)
+          .limit(3);
+          
+        if (similar) setSimilarRooms(similar);
+      }
       setLoading(false);
     };
     
@@ -256,12 +272,17 @@ export default function RoomDetail() {
           <section className="mt-8 flex flex-col gap-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex-1">
-                <h2 className="font-headline font-extrabold text-3xl md:text-4xl text-on-surface leading-tight tracking-tight">
-                  {room.title}
-                </h2>
-                <div className="flex items-center gap-1 text-on-surface-variant font-medium mt-1">
-                  <span className="material-symbols-outlined text-primary" style={{ fontSize: '20px' }}>location_on</span>
-                  <span>{room.locality}, {room.city}</span>
+                <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-2">{room.title}</h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border border-emerald-100 shadow-sm">
+                    <Zap size={14} className="fill-emerald-500" /> Super Host
+                  </div>
+                  {moveInReport && (
+                    <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border border-indigo-100 shadow-sm">
+                      <FileText size={14} className="text-indigo-500" /> Move-in Report Filed • {format(parseISO(moveInReport.created_at), 'MMM yyyy')}
+                    </div>
+                  )}
+                  <p className="text-gray-400 font-bold text-xs uppercase tracking-widest flex items-center gap-1 ml-1"><MapPin size={14}/> {room.locality}, {room.city}</p>
                 </div>
               </div>
 
@@ -398,6 +419,12 @@ export default function RoomDetail() {
                 )}
 
                 <div className="flex flex-col gap-3">
+                  {profile?.role === 'tenant' && (
+                    <div className="mb-2 p-3 bg-slate-50 rounded-2xl border border-slate-100 animate-in fade-in slide-in-from-top-2">
+                       <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Your Reputation</div>
+                       <TenantRentScore tenantId={profile.id} compact />
+                    </div>
+                  )}
                   <button 
                     onClick={() => setIsModalOpen(true)}
                     className="w-full h-12 bg-white border-2 border-primary text-primary font-headline font-bold rounded-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"

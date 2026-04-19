@@ -29,7 +29,9 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
   const [editAmount, setEditAmount] = useState<string>('');
   const [editUtility, setEditUtility] = useState<string>('');
   const [editNotes, setEditNotes] = useState<string>('');
+  const [paymentMode, setPaymentMode] = useState<'cash' | 'upi' | 'bank'>('cash');
   const [updating, setUpdating] = useState(false);
+  const [lastPaidId, setLastPaidId] = useState<string | null>(null);
 
   // Generate last 6 months starting from current month
   const months = Array.from({ length: 6 }).map((_, i) => format(subMonths(new Date(), i), 'MMM yyyy'));
@@ -53,6 +55,8 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
     setEditAmount(entry.amount.toString());
     setEditUtility((entry.utility_amount || 0).toString());
     setEditNotes(entry.notes || '');
+    setPaymentMode(entry.payment_mode || 'upi');
+    setLastPaidId(null);
   };
 
   const handlePrint = () => {
@@ -86,6 +90,7 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
     const { error } = await onUpdate(selectedCell.id, {
       status: 'paid',
       paid_on: format(new Date(), 'yyyy-MM-dd'),
+      payment_mode: paymentMode,
       notes: editNotes
     });
     setUpdating(false);
@@ -93,8 +98,13 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
       toast.error('Failed to mark as paid');
     } else {
       toast.success('Rent marked as paid ✅');
-      setSelectedCell(null);
+      setLastPaidId(selectedCell.id);
+      // Don't close modal immediately so they can download receipt
     }
+  };
+
+  const openReceipt = (id: string) => {
+    window.open(`/receipt/${id}`, '_blank');
   };
 
   return (
@@ -245,35 +255,67 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                    />
                 </div>
 
-                <div>
-                   <label className="block text-sm font-bold text-gray-700 mb-2">Notes <span className="text-gray-400 font-medium">(Optional)</span></label>
-                   <input 
-                     type="text"
-                     placeholder="e.g., Paid via UPI"
-                     value={editNotes}
-                     onChange={(e) => setEditNotes(e.target.value)}
-                     className="w-full px-4 py-3 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all font-medium text-gray-800 text-base"
-                   />
-                </div>
+                 <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Notes <span className="text-gray-400 font-medium">(Optional)</span></label>
+                    <input 
+                      type="text"
+                      placeholder="e.g., Paid via UPI"
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      className="w-full px-4 py-3 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all font-medium text-gray-800 text-base"
+                    />
+                 </div>
 
-                <div className="mt-2 flex flex-col gap-3">
-                   {selectedCell.status !== 'paid' && (
-                     <button 
-                       onClick={handleMarkPaid}
-                       disabled={updating}
-                       className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 min-h-[44px] rounded-xl shadow-md shadow-green-600/20 active:scale-[0.98] transition-all flex justify-center items-center gap-2"
-                     >
-                       {updating ? 'Updating...' : <><CheckCircle size={18} /> Mark as Paid</>}
-                     </button>
-                   )}
-                   <button 
-                     onClick={handleSaveModal}
-                     disabled={updating}
-                     className="w-full bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200 font-bold py-3 min-h-[44px] rounded-xl active:scale-[0.98] transition-all"
-                   >
-                     {updating ? 'Saving...' : 'Save Changes'}
-                   </button>
-                </div>
+                 <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Payment Mode</label>
+                    <select 
+                      value={paymentMode}
+                      onChange={(e) => setPaymentMode(e.target.value as any)}
+                      className="w-full px-4 py-3 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all font-bold text-gray-900 text-base appearance-none"
+                    >
+                      <option value="upi">UPI / Online</option>
+                      <option value="cash">Cash</option>
+                      <option value="bank">Bank Transfer</option>
+                    </select>
+                 </div>
+
+                 <div className="mt-2 flex flex-col gap-3">
+                    {lastPaidId ? (
+                      <button 
+                        onClick={() => openReceipt(lastPaidId)}
+                        className="w-full bg-slate-900 text-white font-bold py-3.5 min-h-[44px] rounded-xl shadow-lg active:scale-[0.98] transition-all flex justify-center items-center gap-2 animate-in zoom-in-90 duration-300"
+                      >
+                        <Printer size={18} /> Download Receipt 🧾
+                      </button>
+                    ) : (
+                      <>
+                        {selectedCell.status !== 'paid' && (
+                          <button 
+                            onClick={handleMarkPaid}
+                            disabled={updating}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 min-h-[44px] rounded-xl shadow-md shadow-green-600/20 active:scale-[0.98] transition-all flex justify-center items-center gap-2"
+                          >
+                            {updating ? 'Updating...' : <><CheckCircle size={18} /> Mark as Paid</>}
+                          </button>
+                        )}
+                        {selectedCell.status === 'paid' && (
+                          <button 
+                            onClick={() => openReceipt(selectedCell.id)}
+                            className="w-full bg-slate-100 text-slate-700 font-bold py-3 min-h-[44px] rounded-xl hover:bg-slate-200 transition-all flex justify-center items-center gap-2 border border-slate-200"
+                          >
+                            <Printer size={16} /> View Receipt 🧾
+                          </button>
+                        )}
+                      </>
+                    )}
+                    <button 
+                      onClick={handleSaveModal}
+                      disabled={updating}
+                      className="w-full bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200 font-bold py-3 min-h-[44px] rounded-xl active:scale-[0.98] transition-all"
+                    >
+                      {updating ? 'Saving...' : 'Save Changes'}
+                    </button>
+                 </div>
               </div>
 
             </div>

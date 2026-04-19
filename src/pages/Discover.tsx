@@ -21,6 +21,7 @@ export default function Discover() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+  const [heatmapActive, setHeatmapActive] = useState(false);
 
   // Extract filters from URL
   const filtersUrl = useMemo(() => {
@@ -257,7 +258,19 @@ export default function Discover() {
         <div className={`flex-1 h-full bg-gray-100 relative ${viewMode === 'list' ? 'hidden md:block' : 'block'}`}>
           {/* Subtle inset shadow over map */}
           <div className="absolute inset-0 pointer-events-none shadow-[inset_10px_0_20px_-10px_rgba(0,0,0,0.05)] z-[400] md:block hidden"></div>
-          <MapView rooms={filteredRooms} />
+          
+          {/* Heatmap Toggle Overlay */}
+          <div className="absolute top-4 right-4 z-[400]">
+             <button 
+               onClick={() => setHeatmapActive(!heatmapActive)}
+               className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all border-2 ${heatmapActive ? 'bg-orange-500 text-white border-orange-400' : 'bg-white text-slate-600 border-white hover:border-orange-100'}`}
+             >
+               <span className={`${heatmapActive ? 'animate-bounce' : ''}`}>🔥</span>
+               {heatmapActive ? 'Heatmap: On' : 'Show Price Heat'}
+             </button>
+          </div>
+
+          <MapView rooms={filteredRooms} heatmapActive={heatmapActive} />
         </div>
       </div>
     </div>
