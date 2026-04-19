@@ -121,12 +121,37 @@ export const useLedger = () => {
     return { total, error: null };
   };
 
+  /**
+   * Applies a utility bill split across multiple tenants for a specific month.
+   * WHAT IT DOES: Calculates a per-tenant share of a total bill and updates the ledger records.
+   */
+  const applyBulkUtilityBill = async (landlordId: string, month: string, totalAmount: number, tenantIds: string[]) => {
+    setLoading(true);
+    if (tenantIds.length === 0) {
+      setLoading(false);
+      return { error: new Error('No tenants selected') };
+    }
+
+    const perTenantAmount = Math.round(totalAmount / tenantIds.length);
+
+    const { error } = await supabase
+      .from('rent_ledger')
+      .update({ utility_amount: perTenantAmount })
+      .eq('landlord_id', landlordId)
+      .eq('month', month)
+      .in('tenant_id', tenantIds);
+    
+    setLoading(false);
+    return { error };
+  };
+
   return {
     loading,
     fetchLedger,
     markPaid,
     updateLedgerEntry,
     createLedgerEntries,
-    getMonthlyTotal
+    getMonthlyTotal,
+    applyBulkUtilityBill
   };
 };

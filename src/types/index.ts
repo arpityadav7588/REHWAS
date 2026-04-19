@@ -35,6 +35,8 @@ export interface Room {
   photos: string[];
   bhoomi_score?: number;
   bhoomi_grade?: 'A+' | 'A' | 'B+' | 'B';
+  utility_billing_type?: 'fixed' | 'shared_headcount' | 'metered';
+  utility_fixed_amount?: number;
   created_at: string;
 }
 

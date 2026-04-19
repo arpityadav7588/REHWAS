@@ -27,6 +27,7 @@ interface RentLedgerTableProps {
 export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries, onUpdate }) => {
   const [selectedCell, setSelectedCell] = useState<RentLedgerExtended | null>(null);
   const [editAmount, setEditAmount] = useState<string>('');
+  const [editUtility, setEditUtility] = useState<string>('');
   const [editNotes, setEditNotes] = useState<string>('');
   const [updating, setUpdating] = useState(false);
 
@@ -50,6 +51,7 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
   const handleCellClick = (entry: RentLedgerExtended) => {
     setSelectedCell(entry);
     setEditAmount(entry.amount.toString());
+    setEditUtility((entry.utility_amount || 0).toString());
     setEditNotes(entry.notes || '');
   };
 
@@ -61,9 +63,11 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
     if (!selectedCell) return;
     setUpdating(true);
     const amountNum = parseFloat(editAmount);
+    const utilityNum = parseFloat(editUtility);
     
     const { error } = await onUpdate(selectedCell.id, {
       amount: isNaN(amountNum) ? selectedCell.amount : amountNum,
+      utility_amount: isNaN(utilityNum) ? (selectedCell.utility_amount || 0) : utilityNum,
       notes: editNotes
     });
     
@@ -135,7 +139,7 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                   {months.map(month => {
                     const entry = entries[month];
                     // Simulate utility and arrears for the "Advanced Khata" experience
-                    const utility = entry ? (entry.utility_amount || 500 + (parseInt(entry.id.slice(0,2), 16) % 500)) : 0;
+                    const utility = entry?.utility_amount || 0;
                     const isTotalUnpaid = entry?.status !== 'paid';
                     
                     return (
@@ -152,13 +156,15 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                                <span className={`text-[10px] font-black uppercase tracking-widest ${entry.status === 'paid' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                  {entry.status}
                                </span>
-                               <span className="text-lg font-black text-dark">₹{entry.amount + (isTotalUnpaid ? utility : 0)}</span>
+                               <span className="text-lg font-black text-dark">₹{(entry.amount + utility).toLocaleString()}</span>
                             </div>
                             
-                            {isTotalUnpaid && (
-                              <div className="flex gap-1 mt-1">
+                            {(utility > 0 || isTotalUnpaid) && (
+                              <div className="flex flex-wrap justify-center gap-1 mt-1">
                                  <div className="bg-white/60 text-[9px] px-1.5 py-0.5 rounded-md font-bold text-slate-500 border border-slate-100">Rent: {entry.amount}</div>
-                                 <div className="bg-indigo-50 text-[9px] px-1.5 py-0.5 rounded-md font-bold text-indigo-600 border border-indigo-100">Util: {utility}</div>
+                                 {utility > 0 && (
+                                   <div className="bg-indigo-50 text-[9px] px-1.5 py-0.5 rounded-md font-bold text-indigo-600 border border-indigo-100">Util: {utility}</div>
+                                 )}
                               </div>
                             )}
                             
@@ -226,6 +232,16 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                      value={editAmount}
                      onChange={(e) => setEditAmount(e.target.value)}
                      className="w-full px-4 py-3 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-green-500/10 focus:border-green-500 outline-none transition-all font-bold text-gray-900 text-base"
+                   />
+                </div>
+
+                <div>
+                   <label className="block text-sm font-bold text-gray-700 mb-2">Utility Bill (₹)</label>
+                   <input 
+                     type="number"
+                     value={editUtility}
+                     onChange={(e) => setEditUtility(e.target.value)}
+                     className="w-full px-4 py-3 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all font-bold text-indigo-900 text-base"
                    />
                 </div>
 

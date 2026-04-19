@@ -1,73 +1,98 @@
-# React + TypeScript + Vite
+# REHWAS — Making Bharat's Rentals Better 🏠🇮🇳
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+REHWAS is a premium, broker-free rental platform designed to bring transparency and efficiency to the Indian urban rental market. It connects tenants with verified landlords across major cities like **Bengaluru, Pune, and Mumbai**, eliminating the middleman and simplifying property management.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Key Value Propositions
 
-## React Compiler
+- **100% Broker-Free:** Direct communication between owners and seekers.
+- **Smart Map Discovery:** Visual, locality-based search with real-time price pins.
+- **KhataBook for Rent:** Advanced digital ledger for landlords to track rent, arrears, and utilities.
+- **Urja Utility Splitter:** Automated building-wide utility bill splitting for shared meters.
+- **Digital Estate Dossier:** Exportable, professional tenant profiles for simplified move-ins.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📖 Detailed Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+For a deep dive into every page, component, and technical detail, please see:
+👉 **[FEATURES.md](./FEATURES.md)**
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 🛠️ Tech Stack
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **Frontend:** React 19, TypeScript, Vite
+- **Styling:** TailwindCSS 3 (Glassmorphism & Mobile-first)
+- **Backend:** Supabase (Postgres Database, Auth, Storage, Realtime)
+- **Maps:** Leaflet.js
+- **State/Query:** TanStack React Query
+- **Typography:** @chenglou/pretext (Precise Measurement)
+
+---
+
+## 📂 Project Structure
+
+```bash
+d:/Rehwas
+├── rehwas/            # Main React + Vite Application
+│   ├── src/
+│   │   ├── components/ # Reusable UI blocks
+│   │   ├── pages/      # Full-page views (Home, Discover, Dashboard, etc.)
+│   │   ├── hooks/      # Custom React hooks (useAuth, useLedger, useRooms)
+│   │   ├── lib/        # Supabase client & utilities
+│   │   └── types/      # TypeScript interfaces
+│   ├── public/         # Static assets
+│   └── .env.example    # Template for Supabase keys
+├── degin.md/           # High-fidelity design specs & mockups
+├── FEATURES.md         # Comprehensive feature documentation
+└── README.md           # You are here
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## ⚙️ Getting Started
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. Prerequisites
+- Node.js (v18+)
+- npm or yarn
+- A Supabase account
+
+### 2. Installation
+```bash
+# Clone the repository
+git clone https://github.com/your-username/rehwas.git
+
+# Navigate to the app directory
+cd rehwas/rehwas
+
+# Install dependencies
+npm install
 ```
+
+### 3. Environment Setup
+Create a `.env` file in `rehwas/rehwas/` using the following:
+```env
+VITE_SUPABASE_URL=your_project_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
+```
+
+### 4. Run Development Server
+```bash
+npm run dev
+```
+
+---
+
+## 🔮 Future Roadmap
+
+- [ ] **Verified Profiles:** Aadhaar-linked KYC for 100% trust.
+- [ ] **AI Recommendations:** Local school/office commute optimization.
+- [ ] **City Expansion:** Launching soon in Hyderabad, Chennai, and NCR.
+- [ ] **Automated Reminders:** Direct push notifications for rent dues.
+
+---
+
+Built with ❤️ for Bharat. 
+© 2026 REHWAS Technologies. All Rights Reserved.

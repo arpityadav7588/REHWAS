@@ -31,7 +31,7 @@ export default function LandlordDashboard() {
   const navigate = useNavigate();
   const { profile, loading: authLoading } = useAuth();
   const { rooms, fetchRooms, deleteRoom, updateRoom, loading: roomsLoading } = useRooms();
-  const { fetchLedger, getMonthlyTotal, createLedgerEntries, updateLedgerEntry } = useLedger();
+  const { fetchLedger, getMonthlyTotal, createLedgerEntries, updateLedgerEntry, applyBulkUtilityBill } = useLedger();
 
   // Selected Tab State
   const [activeTab, setActiveTab] = useState<'rooms' | 'tenants' | 'ledger' | 'reminders'>('rooms');
@@ -44,6 +44,13 @@ export default function LandlordDashboard() {
 
   // Dossier State
   const [selectedDossierTenant, setSelectedDossierTenant] = useState<any>(null);
+
+  // Utility Billing Modal States
+  const [isUtilModalOpen, setIsUtilModalOpen] = useState(false);
+  const [utilTotalAmount, setUtilTotalAmount] = useState('');
+  const [utilMonth, setUtilMonth] = useState(format(new Date(), 'MMM yyyy'));
+  const [selectedTenantsForUtil, setSelectedTenantsForUtil] = useState<string[]>([]);
+  const [applyingUtil, setApplyingUtil] = useState(false);
 
   // Add Tenant Modal States
   const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
@@ -403,7 +410,24 @@ export default function LandlordDashboard() {
 
       {/* TAB 3: KHATABOOK (Rent Ledger) */}
       {activeTab === 'ledger' && (
-        <RentLedgerTable ledgerEntries={ledgerEntries as any} onUpdate={updateLedgerEntry} />
+        <div className="flex flex-col gap-6">
+           <div className="flex justify-between items-center bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+             <div>
+               <h2 className="text-xl font-bold text-gray-900">Advanced Khata</h2>
+               <p className="text-sm font-medium text-gray-500">Track rent and split shared utility bills.</p>
+             </div>
+             <button 
+               onClick={() => {
+                  setSelectedTenantsForUtil(tenants.map(t => t.id));
+                  setIsUtilModalOpen(true);
+               }}
+               className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 font-bold py-2.5 px-5 rounded-xl border border-indigo-200 transition-colors flex items-center gap-2"
+             >
+               <IndianRupee size={18} /> Quick Utility Bill
+             </button>
+           </div>
+           <RentLedgerTable ledgerEntries={ledgerEntries as any} onUpdate={updateLedgerEntry} />
+        </div>
       )}
 
       {/* TAB 4: REMINDERS */}
@@ -549,6 +573,130 @@ export default function LandlordDashboard() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* UTILITY BILLING MODAL */}
+      {isUtilModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onClick={() => setIsUtilModalOpen(false)}></div>
+          
+          <div className="bg-white w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 md:p-8 flex flex-col gap-6">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                   <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                      <IndianRupee size={20}/>
+                   </div>
+                   <h3 className="text-2xl font-black text-gray-900 tracking-tighter">Split Utility Bill</h3>
+                </div>
+                <button 
+                  onClick={() => setIsUtilModalOpen(false)} 
+                  className="bg-gray-100 hover:bg-gray-200 p-2 min-w-[44px] min-h-[44px] rounded-full text-gray-500 transition-colors flex items-center justify-center"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-5">
+                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                   <p className="text-xs font-bold text-indigo-800 leading-relaxed">
+                      💡 <strong>Shared Split Strategy:</strong> Enter the building's total bill. It will be divided equally across selected active tenants.
+                   </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-black text-gray-700 uppercase tracking-widest mb-1.5 ml-1">Total Bill Amount (₹)</label>
+                  <input 
+                    type="number" 
+                    value={utilTotalAmount} onChange={(e) => setUtilTotalAmount(e.target.value)}
+                    required placeholder="e.g. 5400"
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all font-black text-gray-900 text-xl"
+                  />
+                </div>
+
+                <div>
+                   <label className="block text-sm font-black text-gray-700 uppercase tracking-widest mb-1.5 ml-1">Billing Month</label>
+                   <select 
+                     value={utilMonth}
+                     onChange={(e) => setUtilMonth(e.target.value)}
+                     className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl outline-none font-black text-gray-800 text-lg appearance-none"
+                   >
+                     {Array.from({ length: 6 }).map((_, i) => {
+                        const m = format(subMonths(new Date(), i), 'MMM yyyy');
+                        return <option key={m} value={m}>{m}</option>
+                     })}
+                   </select>
+                </div>
+
+                <div>
+                   <label className="block text-sm font-black text-gray-700 uppercase tracking-widest mb-1.5 ml-1">Included Tenants ({selectedTenantsForUtil.length})</label>
+                   <div className="max-h-48 overflow-y-auto border-2 border-gray-50 rounded-2xl p-3 flex flex-col gap-2 bg-slate-50/30">
+                      {tenants.map(t => (
+                        <label key={t.id} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer border-2 transition-all ${selectedTenantsForUtil.includes(t.id) ? 'bg-white border-indigo-200 shadow-sm' : 'border-transparent opacity-60'}`}>
+                           <input 
+                             type="checkbox" 
+                             checked={selectedTenantsForUtil.includes(t.id)}
+                             onChange={(e) => {
+                                if (e.target.checked) setSelectedTenantsForUtil([...selectedTenantsForUtil, t.id]);
+                                else setSelectedTenantsForUtil(selectedTenantsForUtil.filter(id => id !== t.id));
+                             }}
+                             className="w-5 h-5 accent-indigo-600 rounded-md"
+                           />
+                           <div className="flex flex-col">
+                              <span className="font-black text-sm text-gray-900 leading-tight">{t.profiles?.full_name}</span>
+                              <span className="text-[10px] text-gray-500 font-black uppercase tracking-tighter">{t.rooms?.title}</span>
+                           </div>
+                        </label>
+                      ))}
+                   </div>
+                </div>
+
+                {utilTotalAmount && selectedTenantsForUtil.length > 0 && (
+                   <div className="p-5 bg-gradient-to-br from-emerald-50 to-white border-2 border-emerald-100 rounded-[2rem] flex justify-between items-center mt-2 shadow-inner">
+                      <div>
+                         <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1">Individual Share</p>
+                         <p className="text-3xl font-black text-emerald-800 tracking-tighter">₹{Math.round(parseFloat(utilTotalAmount) / selectedTenantsForUtil.length).toLocaleString()}</p>
+                      </div>
+                      <div className="w-12 h-12 rounded-full border-4 border-emerald-200 border-t-emerald-500 animate-[spin_3s_linear_infinite]"></div>
+                   </div>
+                )}
+
+                <div className="mt-4 pt-6 border-t border-gray-100">
+                  <button 
+                    onClick={async () => {
+                       if (!utilTotalAmount || selectedTenantsForUtil.length === 0) {
+                          toast.error('Please fill all fields');
+                          return;
+                       }
+                       setApplyingUtil(true);
+                       const { error } = await applyBulkUtilityBill(profile!.id, utilMonth, parseFloat(utilTotalAmount), selectedTenantsForUtil);
+                       setApplyingUtil(false);
+                       if (error) toast.error('Error applying bill: ' + (error as any).message);
+                       else {
+                          toast.success('Building bill split successfully! ⚡');
+                          setIsUtilModalOpen(false);
+                          loadDashboardData();
+                       }
+                    }}
+                    disabled={applyingUtil}
+                    className={`w-full font-black py-5 rounded-[2rem] shadow-xl transition-all flex items-center justify-center gap-3 active:scale-[0.98] ${applyingUtil ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20'}`}
+                  >
+                    {applyingUtil ? (
+                       <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          <span>Calculating Shares...</span>
+                       </div>
+                    ) : (
+                       <>
+                          <IndianRupee size={20} />
+                          <span>Finalize & Update Ledger</span>
+                       </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
