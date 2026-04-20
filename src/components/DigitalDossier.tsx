@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ShieldCheck, User, MapPin, Calendar, CheckCircle2 } from 'lucide-react';
 
 interface DigitalDossierProps {
@@ -18,6 +18,9 @@ interface DigitalDossierProps {
  * ANALOGY: A professional resume for urban living.
  */
 export const DigitalDossier: React.FC<DigitalDossierProps> = ({ tenant }) => {
+  const dossierId = useMemo(() => Math.random().toString(36).substring(7).toUpperCase(), []);
+  const verificationHash = useMemo(() => Math.random().toString(36).repeat(5), []);
+
   return (
     <div id="digital-dossier-print" className="hidden print:block fixed inset-0 bg-white p-12 z-[200]">
       <div className="max-w-4xl mx-auto border-[12px] border-emerald-600/10 rounded-[4rem] p-16 relative overflow-hidden">
@@ -37,7 +40,7 @@ export const DigitalDossier: React.FC<DigitalDossierProps> = ({ tenant }) => {
           </div>
           <div className="text-right">
              <p className="text-sm font-bold text-gray-400">Dossier ID</p>
-             <p className="text-2xl font-black text-gray-900 leading-none mt-1">RH-{Math.random().toString(36).substring(7).toUpperCase()}</p>
+             <p className="text-2xl font-black text-gray-900 leading-none mt-1">RH-{dossierId}</p>
           </div>
         </div>
 
@@ -104,7 +107,7 @@ export const DigitalDossier: React.FC<DigitalDossierProps> = ({ tenant }) => {
            <div className="relative z-10 flex justify-between items-center">
               <div className="space-y-3">
                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Verification Hash</p>
-                 <p className="font-mono text-xs opacity-40 break-all">{Math.random().toString(36).repeat(5)}</p>
+                 <p className="font-mono text-xs opacity-40 break-all">{verificationHash}</p>
               </div>
               <div className="text-right">
                  <p className="text-xs font-black uppercase tracking-widest text-emerald-400 mb-2">Status</p>
