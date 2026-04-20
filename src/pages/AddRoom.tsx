@@ -235,7 +235,7 @@ export default function AddRoom() {
     // 1. Upload photos
     for (const file of files) {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const fileName = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
       
       const { data, error } = await supabase.storage
         .from('room-photos')

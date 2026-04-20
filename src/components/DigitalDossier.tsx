@@ -37,7 +37,7 @@ export const DigitalDossier: React.FC<DigitalDossierProps> = ({ tenant }) => {
           </div>
           <div className="text-right">
              <p className="text-sm font-bold text-gray-400">Dossier ID</p>
-             <p className="text-2xl font-black text-gray-900 leading-none mt-1">RH-{Math.random().toString(36).substring(7).toUpperCase()}</p>
+             <p className="text-2xl font-black text-gray-900 leading-none mt-1">RH-{crypto.randomUUID().split('-')[0].toUpperCase()}</p>
           </div>
         </div>
 
@@ -104,7 +104,7 @@ export const DigitalDossier: React.FC<DigitalDossierProps> = ({ tenant }) => {
            <div className="relative z-10 flex justify-between items-center">
               <div className="space-y-3">
                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Verification Hash</p>
-                 <p className="font-mono text-xs opacity-40 break-all">{Math.random().toString(36).repeat(5)}</p>
+                 <p className="font-mono text-xs opacity-40 break-all">{crypto.randomUUID().replace(/-/g, '')}</p>
               </div>
               <div className="text-right">
                  <p className="text-xs font-black uppercase tracking-widest text-emerald-400 mb-2">Status</p>
