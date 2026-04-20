@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLedger } from '@/hooks/useLedger';
 import { DigitalCertificate } from '@/components/DigitalCertificate';
 import { VerificationCenter } from '@/components/VerificationCenter';
-import { Shield, MapPin, Phone, LogOut, Award, Navigation } from 'lucide-react';
+import { Shield, Phone, LogOut, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { RentLedger } from '@/types';
 
