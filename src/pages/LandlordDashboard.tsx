@@ -5,13 +5,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRooms } from '@/hooks/useRooms';
 import { useLedger } from '@/hooks/useLedger';
 import { RentLedgerTable } from '@/components/RentLedgerTable';
+export type ExtendedRentLedger = RentLedger & { tenants?: { room_id: string; profiles?: { full_name: string; phone: string } } };
+import type { Tenant, RentLedger } from "@/types";
 import { RoomCard } from '@/components/RoomCard';
-import type { Room, Tenant } from '@/types';
 import toast from 'react-hot-toast';
 import { format, parseISO, subMonths } from 'date-fns';
 import { 
   Home, Users, BookOpen, Bell, Plus, IndianRupee, Key, 
-  DoorOpen, Edit, Trash2, ShieldAlert, Phone, Send, FileText, Download, X
+  DoorOpen, Edit, Trash2, ShieldAlert, Phone, Send, FileText, X
 } from 'lucide-react';
 import { DigitalDossier } from '@/components/DigitalDossier';
 import { VerificationCenter } from '@/components/VerificationCenter';
@@ -40,7 +41,7 @@ export default function LandlordDashboard() {
   // Data States
   const [loading, setLoading] = useState(true);
   const [tenants, setTenants] = useState<TenantExtended[]>([]);
-  const [ledgerEntries, setLedgerEntries] = useState<RentLedger[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<ExtendedRentLedger[]>([]);
   const [rentCollected, setRentCollected] = useState(0);
 
   // Dossier State
@@ -157,12 +158,37 @@ export default function LandlordDashboard() {
     setAddingTenant(true);
 
     try {
-      // 1. Try to find or insert a profile purely via phone mapping (simplified for front-end demonstration)
-      // Note: Direct insertion without auth might be restricted via RLS, assuming standard demo permissions.
-      let finalProfileId = "test-override"; // Override string to avoid blocking demo execution
+      // 1. Try to find or insert a profile purely via phone mapping
+      let finalProfileId: string | null = null;
       
       const { data: existingProfile } = await supabase.from('profiles').select('id').eq('phone', tenantPhone).single();
-      if (existingProfile) finalProfileId = existingProfile.id;
+
+      if (existingProfile) {
+        finalProfileId = existingProfile.id;
+      } else {
+        // Attempt to create a placeholder profile for the tenant
+        // Note: In a production app, this should ideally be handled via a secure server-side function
+        const { data: newProfile, error: pErr } = await supabase
+          .from('profiles')
+          .insert([{
+            full_name: tenantName,
+            phone: tenantPhone,
+            role: 'tenant',
+            kyc_status: 'none'
+          }])
+          .select()
+          .single();
+
+        if (pErr) {
+          console.error('Profile creation failed:', pErr);
+          throw new Error('Could not create a profile for this tenant. Please ensure the phone number is valid or the tenant has already signed up.');
+        }
+        finalProfileId = newProfile.id;
+      }
+
+      if (!finalProfileId) {
+        throw new Error('Tenant profile could not be resolved.');
+      }
 
       // 2. Insert Tenant Record
       const { data: newTenant, error: tErr } = await supabase.from('tenants').insert([{
