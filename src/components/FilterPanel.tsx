@@ -51,8 +51,8 @@ export const FilterPanel = () => {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
       <div>
-        <label className="block text-sm font-semibold mb-2 text-gray-700">City</label>
-        <select value={city} onChange={(e) => setCity(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all cursor-pointer text-base">
+        <label htmlFor="city-select" className="block text-sm font-semibold mb-2 text-gray-700">City</label>
+        <select id="city-select" value={city} onChange={(e) => setCity(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all cursor-pointer text-base">
           <option value="Bengaluru">Bengaluru</option>
           <option value="Pune">Pune</option>
           <option value="Mumbai">Mumbai</option>
@@ -62,17 +62,17 @@ export const FilterPanel = () => {
 
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-sm font-semibold mb-2 text-gray-700">Min Rent</label>
+          <label htmlFor="min-rent-input" className="block text-sm font-semibold mb-2 text-gray-700">Min Rent</label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
-            <input type="number" value={minRent} onChange={(e) => setMinRent(e.target.value)} className="w-full p-2.5 pl-8 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all text-base" placeholder="0" />
+            <input id="min-rent-input" type="number" value={minRent} onChange={(e) => setMinRent(e.target.value)} className="w-full p-2.5 pl-8 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all text-base" placeholder="0" />
           </div>
         </div>
         <div className="flex-1">
-          <label className="block text-sm font-semibold mb-2 text-gray-700">Max Rent</label>
+          <label htmlFor="max-rent-input" className="block text-sm font-semibold mb-2 text-gray-700">Max Rent</label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
-            <input type="number" value={maxRent} onChange={(e) => setMaxRent(e.target.value)} className="w-full p-2.5 pl-8 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all text-base" placeholder="50000" />
+            <input id="max-rent-input" type="number" value={maxRent} onChange={(e) => setMaxRent(e.target.value)} className="w-full p-2.5 pl-8 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition-all text-base" placeholder="50000" />
           </div>
         </div>
       </div>
