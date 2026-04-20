@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { MapPin, Car, Bike, Train, Clock, ArrowRight, Zap } from 'lucide-react';
 import type { Room } from '@/types';
 
