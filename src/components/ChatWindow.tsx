@@ -92,7 +92,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ roomId, otherUserId, oth
         .from('messages')
         .select('*')
         .eq('room_id', roomId)
-        .or(`and(sender_id.eq.${profile.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${profile.id})`)
+        .in('sender_id', [profile.id, otherUserId])
+        .in('receiver_id', [profile.id, otherUserId])
         .order('created_at', { ascending: true })
         .limit(50);
 
