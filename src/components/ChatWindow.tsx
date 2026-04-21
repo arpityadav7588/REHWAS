@@ -5,6 +5,7 @@ import type { Message } from '@/types';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { Send, X } from 'lucide-react';
 import { prepare, layout } from '@chenglou/pretext';
+import { EmptyState } from './EmptyState';
 
 interface ChatWindowProps {
   roomId: string;
@@ -152,12 +153,23 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ roomId, otherUserId, oth
     setMessages(prev => [...prev, tempMessage]);
 
     // Commit definitively to Supabase
-    await supabase.from('messages').insert([{
+    const { data: sentMsg } = await supabase.from('messages').insert([{
       room_id: roomId,
       sender_id: profile.id,
       receiver_id: otherUserId,
       content
-    }]);
+    }]).select().single();
+
+    if (sentMsg) {
+      // Create notification for the recipient
+      await supabase.from('notifications').insert([{
+        user_id: otherUserId,
+        type: 'new_message',
+        title: `${profile.full_name} sent you a message`,
+        body: content.length > 50 ? `${content.substring(0, 50)}...` : content,
+        link: `/room/${roomId}` // Assuming chat opens in room view or similar
+      }]);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -189,6 +201,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ roomId, otherUserId, oth
     }
   });
 
+  if (!profile) {
+    return (
+      <div className="flex flex-col h-full bg-slate-50 w-full overflow-hidden shadow-2xl items-center justify-center p-8">
+        <EmptyState 
+          illustration="lock-key"
+          title="Sign in to contact landlords"
+          description="Create a free account to chat, book visits, and save your favourite rooms."
+          ctaLabel="Sign in or create account →"
+          ctaHref="/login"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-slate-50 w-full overflow-hidden shadow-2xl relative">
       <div className="flex items-center justify-between bg-white px-5 py-4 border-b border-gray-200 z-10 shrink-0">
@@ -211,45 +237,55 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ roomId, otherUserId, oth
 
       {/* Main Messages Body */}
       <div ref={containerRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-5 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
-         {groupedMessages.map((group, gIdx) => (
-           <div key={gIdx} className="flex flex-col gap-4">
-             {/* Sticky Date Separator */}
-             <div className="flex justify-center sticky top-2 z-10">
-                <span className="bg-white/80 backdrop-blur-md border border-gray-100 px-3 py-1 rounded-full text-xs font-bold text-gray-500 shadow-sm">
-                  {group.label}
-                </span>
-             </div>
+         {messages.length === 0 ? (
+           <div className="flex-1 flex items-center justify-center">
+             <EmptyState 
+               illustration="speech-bubbles"
+               title="No conversations yet"
+               description="When a tenant contacts you about a room, their message will appear here."
+             />
+           </div>
+         ) : (
+           groupedMessages.map((group, gIdx) => (
+             <div key={gIdx} className="flex flex-col gap-4">
+               {/* Sticky Date Separator */}
+               <div className="flex justify-center sticky top-2 z-10">
+                  <span className="bg-white/80 backdrop-blur-md border border-gray-100 px-3 py-1 rounded-full text-xs font-bold text-gray-500 shadow-sm">
+                    {group.label}
+                  </span>
+               </div>
 
-             {/* Message Bubbles */}
-             {group.messages.map(msg => {
-               const isMe = msg.sender_id === profile?.id;
-               const lStats = layouts[msg.id] || { height: 22, lineCount: 1 };
-               const minHeight = lStats.height + 20; // adding vertical py-2.5 padding (20px total)
+               {/* Message Bubbles */}
+               {group.messages.map(msg => {
+                 const isMe = msg.sender_id === profile?.id;
+                 const lStats = layouts[msg.id] || { height: 22, lineCount: 1 };
+                 const minHeight = lStats.height + 20; // adding vertical py-2.5 padding (20px total)
 
-               return (
-                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full`}>
-                   <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                     <div 
-                       style={{ minHeight: `${minHeight}px` }}
-                       className={`px-4 py-2.5 shadow-sm text-[15px] leading-[22px] break-words whitespace-pre-wrap flex ${
-                         lStats.lineCount === 1 ? 'flex-row items-center gap-3' : 'flex-col'
-                       } ${
-                         isMe 
-                           ? `bg-[#10B981] text-white ${lStats.lineCount > 1 ? 'rounded-2xl rounded-br-sm' : 'rounded-full rounded-br-sm'}` 
-                           : `bg-white border border-gray-200 text-gray-800 ${lStats.lineCount > 1 ? 'rounded-2xl rounded-bl-sm' : 'rounded-full rounded-bl-sm'}`
-                       }`}
-                     >
-                       <div>{msg.content}</div>
-                       <span className={`text-[10px] font-semibold shrink-0 ${isMe ? 'text-green-100' : 'text-gray-400'} ${lStats.lineCount > 1 ? 'self-end mt-1' : ''}`}>
-                         {format(parseISO(msg.created_at), 'h:mm a')}
-                       </span>
+                 return (
+                   <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full`}>
+                     <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                       <div 
+                         style={{ minHeight: `${minHeight}px` }}
+                         className={`px-4 py-2.5 shadow-sm text-[15px] leading-[22px] break-words whitespace-pre-wrap flex ${
+                           lStats.lineCount === 1 ? 'flex-row items-center gap-3' : 'flex-col'
+                         } ${
+                           isMe 
+                             ? `bg-[#10B981] text-white ${lStats.lineCount > 1 ? 'rounded-2xl rounded-br-sm' : 'rounded-full rounded-br-sm'}` 
+                             : `bg-white border border-gray-200 text-gray-800 ${lStats.lineCount > 1 ? 'rounded-2xl rounded-bl-sm' : 'rounded-full rounded-bl-sm'}`
+                         }`}
+                       >
+                         <div>{msg.content}</div>
+                         <span className={`text-[10px] font-semibold shrink-0 ${isMe ? 'text-green-100' : 'text-gray-400'} ${lStats.lineCount > 1 ? 'self-end mt-1' : ''}`}>
+                           {format(parseISO(msg.created_at), 'h:mm a')}
+                         </span>
+                       </div>
                      </div>
                    </div>
-                 </div>
-               );
-             })}
-           </div>
-         ))}
+                 );
+               })}
+             </div>
+           ))
+         )}
          <div ref={messagesEndRef} />
       </div>
 

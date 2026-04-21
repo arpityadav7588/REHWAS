@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  Menu, X, ArrowRight, Search, MessageSquare, Home as HomeIcon, 
-  Camera, Users, FileText, Map, BookOpen, ShieldCheck, MapPin, Building2 
+  ArrowRight, Search, MessageSquare, Home as HomeIcon, CheckCircle2, TrendingUp, Sparkles, Building2, ShieldCheck, IndianRupee, Key, Zap, Star, Camera, Users, FileText, Map, BookOpen, MapPin, Loader2
 } from 'lucide-react';
+import { usePlatformStats } from '@/hooks/usePlatformStats';
+import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Animated Counter Component.
@@ -36,6 +38,7 @@ const AnimatedCounter = ({ end, duration = 2000, prefix = '', suffix = '' }: { e
  */
 const Hero = () => {
   const navigate = useNavigate();
+  const { rooms, tenants, loading, formattedRooms } = usePlatformStats();
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-surface to-emerald-100/50 py-20 lg:py-32">
@@ -65,15 +68,33 @@ const Hero = () => {
         {/* Stats Section */}
         <div className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto bg-white/60 backdrop-blur-xl border border-white/40 p-10 rounded-[2.5rem] shadow-sm">
           <div className="flex flex-col items-center">
-            <div className="text-5xl font-black text-brand tracking-tighter"><AnimatedCounter end={2400} suffix="+" /></div>
-            <div className="text-xs font-black text-slate-400 mt-2 uppercase tracking-widest">Rooms Listed</div>
+            {loading ? (
+              <div className="h-12 w-24 bg-slate-200 animate-pulse rounded-xl mb-2"></div>
+            ) : rooms < 10 ? (
+              <Link to="/add-room" className="text-sm font-black text-brand text-center hover:underline h-12 flex items-center">
+                {formattedRooms}
+              </Link>
+            ) : (
+              <div className="text-5xl font-black text-brand tracking-tighter">
+                <AnimatedCounter end={rooms >= 100 ? Math.floor(rooms/10)*10 : rooms} suffix={rooms >= 100 ? "+" : ""} />
+              </div>
+            )}
+            {!(rooms < 10 && !loading) && <div className="text-xs font-black text-slate-400 mt-2 uppercase tracking-widest">Rooms Live</div>}
           </div>
+          
           <div className="flex flex-col items-center md:border-x border-slate-200/60">
-            <div className="text-5xl font-black text-brand tracking-tighter"><AnimatedCounter end={8000} suffix="+" /></div>
+            {loading ? (
+              <div className="h-12 w-24 bg-slate-200 animate-pulse rounded-xl mb-2"></div>
+            ) : (
+              <div className="text-5xl font-black text-brand tracking-tighter">
+                <AnimatedCounter end={tenants} suffix="+" />
+              </div>
+            )}
             <div className="text-xs font-black text-slate-400 mt-2 uppercase tracking-widest">Happy Tenants</div>
           </div>
+
           <div className="flex flex-col items-center">
-            <div className="text-5xl font-black text-brand tracking-tighter"><AnimatedCounter end={0} prefix="₹" /></div>
+            <div className="text-5xl font-black text-brand tracking-tighter">₹0</div>
             <div className="text-xs font-black text-slate-400 mt-2 uppercase tracking-widest">Broker Fee</div>
           </div>
         </div>
@@ -188,12 +209,35 @@ const FeatureHighlights = () => {
  */
 const Cities = () => {
   const navigate = useNavigate();
+  const { cityCounts, loading } = usePlatformStats();
+  const [waitlistCity, setWaitlistCity] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const cities = [
-    { name: 'Bengaluru', count: '1,200+', img: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?auto=format&fit=crop&q=80&w=600&h=400' },
-    { name: 'Pune', count: '850+', img: 'https://images.unsplash.com/photo-1572913017567-02f06e300931?auto=format&fit=crop&q=80&w=600&h=400' },
-    { name: 'Mumbai', count: '350+', img: 'https://images.unsplash.com/photo-1522441815192-d9f04eb0615c?auto=format&fit=crop&q=80&w=600&h=400' }
+    { name: 'Bengaluru', id: 'bengaluru', img: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?auto=format&fit=crop&q=80&w=600&h=400' },
+    { name: 'Pune', id: 'pune', img: 'https://images.unsplash.com/photo-1572913017567-02f06e300931?auto=format&fit=crop&q=80&w=600&h=400' },
+    { name: 'Mumbai', id: 'mumbai', img: 'https://images.unsplash.com/photo-1522441815192-d9f04eb0615c?auto=format&fit=crop&q=80&w=600&h=400' }
   ];
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !waitlistCity) return;
+
+    setIsSubmitting(true);
+    const { error } = await supabase
+      .from('waitlist_signups')
+      .insert([{ email, city: waitlistCity }]);
+
+    setIsSubmitting(false);
+    if (error) {
+      toast.error('Failed to join waitlist. Try again later.');
+    } else {
+      toast.success(`You're on the list! We'll notify you when rooms go live in ${waitlistCity}.`);
+      setWaitlistCity(null);
+      setEmail('');
+    }
+  };
 
   return (
     <section id="cities" className="py-32 bg-white">
@@ -201,28 +245,73 @@ const Cities = () => {
         <h2 className="text-4xl font-black text-dark mb-16 border-l-8 border-brand pl-6 tracking-tight">Available in</h2>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
-          {cities.map((city) => (
-            <div 
-              key={city.name}
-              onClick={() => navigate(`/discover?city=${city.name.toLowerCase()}`)}
-              className="group relative h-80 rounded-[2.5rem] overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500"
-            >
-              <img 
-                src={city.img} 
-                alt={city.name} 
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-dark/90 via-dark/20 to-transparent"></div>
-              <div className="absolute bottom-10 left-8 right-8">
-                <h3 className="text-3xl font-black text-white mb-2 flex items-center gap-3">
-                  <MapPin className="w-7 h-7 text-brand" /> {city.name}
-                </h3>
-                <p className="text-emerald-100 font-bold uppercase tracking-widest text-xs">{city.count} active listings</p>
+          {cities.map((city) => {
+            const count = cityCounts[city.name] || 0;
+            const isLive = count > 0;
+
+            return (
+              <div 
+                key={city.name}
+                onClick={() => isLive ? navigate(`/discover?city=${city.name.toLowerCase()}`) : setWaitlistCity(city.name)}
+                className="group relative h-80 rounded-[2.5rem] overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500"
+              >
+                <img 
+                  src={city.img} 
+                  alt={city.name} 
+                  className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isLive ? 'grayscale' : ''}`}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-dark/90 via-dark/20 to-transparent"></div>
+                <div className="absolute bottom-10 left-8 right-8">
+                  <h3 className="text-3xl font-black text-white mb-2 flex items-center gap-3">
+                    <MapPin className="w-7 h-7 text-brand" /> {city.name}
+                  </h3>
+                  {loading ? (
+                    <div className="h-4 w-24 bg-white/20 animate-pulse rounded"></div>
+                  ) : isLive ? (
+                    <p className="text-emerald-100 font-bold uppercase tracking-widest text-xs">{count} active listings</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-amber-300 font-bold uppercase tracking-widest text-xs">Launching soon 🚀</p>
+                      <button className="text-[10px] bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 py-1 rounded-full w-fit backdrop-blur-sm transition-all">
+                        Join Waitlist
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
+
+      {/* Waitlist Modal */}
+      {waitlistCity && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-dark/60 backdrop-blur-md" onClick={() => setWaitlistCity(null)}></div>
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-10 relative z-10 animate-in zoom-in-95 duration-300 shadow-2xl">
+            <h3 className="text-3xl font-black text-dark mb-4">Launching soon in {waitlistCity} 🏠</h3>
+            <p className="text-slate-500 font-medium mb-8">We're currently onboarding verified landlords in {waitlistCity}. Drop your email to get notified the second we go live.</p>
+            
+            <form onSubmit={handleWaitlistSubmit} className="flex flex-col gap-4">
+              <input 
+                type="email" 
+                required
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold text-dark"
+              />
+              <button 
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-4 bg-brand text-white font-black rounded-2xl shadow-xl shadow-brand/20 hover:bg-emerald-600 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Notify Me →'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

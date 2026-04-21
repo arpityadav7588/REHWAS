@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -179,7 +179,18 @@ export default function RoomDetail() {
       sender_id: profile.id,
       receiver_id: room.landlord_id,
       content,
-    }]);
+    }]).select().single();
+
+    if (!error) {
+      // Create notification for the landlord
+      await supabase.from('notifications').insert([{
+        user_id: room.landlord_id,
+        type: 'visit_request',
+        title: `${profile.full_name} requested a visit`,
+        body: `${profile.full_name} wants to visit ${room.title} on ${visitDate} at ${visitTime.split(' (')[0]}`,
+        link: `/dashboard#tenants` // Navigating to a place where they manage visits
+      }]);
+    }
 
     setSendingRequest(false);
     if (error) {
@@ -203,8 +214,7 @@ export default function RoomDetail() {
   if (!room) return null;
 
   // Derive static price context logically
-  const avgRange = room.room_type === '1BHK' ? '12k–16k' : room.room_type === '2BHK' ? '18k–25k' : room.room_type === 'Studio' ? '10k–14k' : '6k–10k';
-  const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
 
   return (
     <div className="min-h-screen bg-surface font-body text-on-surface antialiased pb-32">
@@ -275,7 +285,7 @@ export default function RoomDetail() {
                 <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-2">{room.title}</h1>
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border border-emerald-100 shadow-sm">
-                    <Zap size={14} className="fill-emerald-500" /> Super Host
+                    <Zap size={14} className="fill-emerald-500" /> Verified Host
                   </div>
                   {moveInReport && (
                     <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border border-indigo-100 shadow-sm">
@@ -287,21 +297,23 @@ export default function RoomDetail() {
               </div>
 
               {/* BHOOMI SCORE (Asset Trust Score) */}
-              <div className="bg-slate-900 border-2 border-emerald-500/20 p-5 rounded-[2.5rem] flex flex-col items-center justify-center min-w-[160px] shadow-2xl shadow-emerald-500/10 hover:scale-105 transition-all relative overflow-hidden group">
-                <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1 relative z-10">Bhoomi 2.0</span>
-                <div className="flex flex-col items-center relative z-10">
-                  <span className="text-4xl font-black text-white tracking-tighter leading-none">
-                    {room.bhoomi_score || 745}
-                  </span>
-                  <div className="flex gap-1 mt-2">
-                    {[1, 2, 3, 4].map(s => (
-                      <div key={s} className={`h-1 w-4 rounded-full ${(room.bhoomi_score || 745) > (300 + s*150) ? 'bg-emerald-500' : 'bg-slate-700'}`}></div>
-                    ))}
+              {room.bhoomi_score && (
+                <div className="bg-slate-900 border-2 border-emerald-500/20 p-5 rounded-[2.5rem] flex flex-col items-center justify-center min-w-[160px] shadow-2xl shadow-emerald-500/10 hover:scale-105 transition-all relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1 relative z-10">Bhoomi Score</span>
+                  <div className="flex flex-col items-center relative z-10">
+                    <span className="text-4xl font-black text-white tracking-tighter leading-none">
+                      {room.bhoomi_score}
+                    </span>
+                    <div className="flex gap-1 mt-2">
+                      {[1, 2, 3, 4].map(s => (
+                        <div key={s} className={`h-1 w-4 rounded-full ${room.bhoomi_score && room.bhoomi_score > (300 + s*150) ? 'bg-emerald-500' : 'bg-slate-700'}`}></div>
+                      ))}
+                    </div>
+                    <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase tracking-widest">Asset Trust Index</p>
                   </div>
-                  <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase tracking-widest">Asset Trust Index</p>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="flex items-baseline gap-1 mt-2">
@@ -384,6 +396,18 @@ export default function RoomDetail() {
                   <div className="absolute inset-0 bg-primary/5 pointer-events-none"></div>
                 </div>
               </section>
+
+              {/* Reviews Section */}
+              <section className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-surface-container-low">
+                <h3 className="font-headline font-bold text-xl text-on-surface mb-6">Reviews</h3>
+                <div className="flex flex-col items-center py-10 text-center">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-200">
+                    <span className="material-symbols-outlined text-[32px]">rate_review</span>
+                  </div>
+                  <p className="text-slate-500 font-bold">No reviews yet</p>
+                  <p className="text-slate-400 text-sm">Be the first to review this property after your stay.</p>
+                </div>
+              </section>
             </div>
 
             {/* R: Context & Landlord */}
@@ -440,27 +464,6 @@ export default function RoomDetail() {
                     Chat with Landlord
                   </button>
                 </div>
-              </section>
-
-              {/* Price Context */}
-              <section className="bg-tertiary-container/10 p-5 rounded-3xl border border-tertiary-container/20">
-                <h4 className="font-headline font-bold text-on-tertiary-container text-xs tracking-wide uppercase mb-2">Market Watch</h4>
-                <p className="text-on-tertiary-container font-medium text-sm">
-                  Average {room.room_type} in {room.locality}:
-                </p>
-                <p className="text-2xl font-black text-on-tertiary-container mt-1">₹{avgRange}</p>
-                <div className="mt-3 flex items-center gap-2 text-primary font-bold text-xs bg-white/50 w-fit px-2 py-1 rounded-lg">
-                  <span className="material-symbols-outlined text-[14px]">trending_up</span>
-                  Competitive Listing
-                </div>
-              </section>
-
-              {/* Safety Tip */}
-              <section className="flex items-start gap-4 p-5 bg-surface-container-low rounded-3xl border border-outline-variant/10">
-                <span className="material-symbols-outlined text-outline">shield</span>
-                <p className="text-xs font-semibold text-on-surface-variant leading-relaxed">
-                  <strong className="text-on-surface">Safety Tip:</strong> Never pay a security deposit without visiting in person.
-                </p>
               </section>
             </div>
           </div>

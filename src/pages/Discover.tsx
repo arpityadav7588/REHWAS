@@ -4,7 +4,8 @@ import { useRooms } from '@/hooks/useRooms';
 import { FilterPanel } from '@/components/FilterPanel';
 import { MapView } from '@/components/MapView';
 import { RoomCard } from '@/components/RoomCard';
-import { Search, Map as MapIcon, List as ListIcon, X } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { Search, X } from 'lucide-react';
 
 /**
  * Discover Page
@@ -157,20 +158,14 @@ export default function Discover() {
                   <RoomCard key={room.id} room={room} />
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center py-16 px-6 text-center text-gray-500 bg-gray-50 rounded-[20px] border-2 border-gray-100 border-dashed">
-                  <div className="w-24 h-24 bg-white shadow-sm rounded-full flex items-center justify-center mb-5 relative">
-                    <MapIcon size={40} className="text-gray-300" />
-                    <Search size={20} className="text-brand absolute bottom-3 right-3 bg-white rounded-full" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">No rooms left</h3>
-                  <p className="text-gray-500 max-w-[250px]">We couldn't find any rooms matching your exact filters.</p>
-                  <button 
-                    onClick={() => setSearchParams(new URLSearchParams())}
-                    className="mt-6 font-bold text-brand bg-emerald-50 px-6 py-2.5 rounded-xl hover:bg-emerald-100 transition-colors"
-                  >
-                    Clear All Filters
-                  </button>
-                </div>
+                <EmptyState 
+                  illustration="magnifying-glass"
+                  title="No rooms found in this area"
+                  description="Try adjusting your filters or expanding to nearby localities."
+                  ctaLabel="Reset all filters"
+                  ctaOnClick={() => setSearchParams(new URLSearchParams())}
+                  secondary={{ label: "Browse all of Bengaluru →", href: "/discover?city=Bengaluru" }}
+                />
               )}
 
               {/* Unique Updates: The Pulse & Coming Soon */}
@@ -219,7 +214,7 @@ export default function Discover() {
                       <p className="text-indigo-100 text-sm font-medium">Boost your trust score and get instant move-ins with Aadhaar-linked verification.</p>
                    </div>
                    <div className="absolute -right-4 -bottom-4 opacity-10 rotate-12 scale-150">
-                      <ListIcon size={120} className="text-white" />
+                      <Search size={120} className="text-white" />
                    </div>
                 </div>
 

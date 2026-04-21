@@ -48,8 +48,20 @@ export const useLedger = () => {
       .from('rent_ledger')
       .update(payload)
       .eq('id', ledgerId)
-      .select()
+      .select('*, tenants(room_id, tenant_profile_id, profiles(full_name))')
       .single();
+
+    if (!error && data) {
+      const ledger = data as any;
+      // Create notification for the tenant
+      await supabase.from('notifications').insert([{
+        user_id: ledger.tenants.tenant_profile_id,
+        type: 'rent_paid',
+        title: `Rent confirmed for ${ledger.month}`,
+        body: `Your rent of ₹${amount.toLocaleString()} has been confirmed by your landlord.`,
+        link: `/profile` // Tenants can see their receipts in profile usually
+      }]);
+    }
       
     setLoading(false);
     return { data, error };

@@ -13,7 +13,34 @@ export interface Profile {
   aadhaar_hash?: string;
   avatar_url?: string;
   bhoomi_score?: number; // Numeric scale 300-900 (Bhoomi 2.0)
+  plan: 'free' | 'pro' | 'business';
+  trial_ends_at?: string | null;
+  rooms_count: number;
   created_at: string;
+  bio?: string;
+  city?: string;
+  notification_preferences?: {
+    rent_reminders: boolean;
+    reminder_days: number;
+    visit_requests: boolean;
+    chat_messages: boolean;
+    maintenance_updates: boolean;
+    platform_updates: boolean;
+    channels: {
+      in_app: boolean;
+      whatsapp: boolean;
+      email: boolean;
+    };
+  };
+  preferences?: {
+    language: string;
+    date_format: string;
+    default_dashboard_tab: string;
+  };
+  privacy_settings?: {
+    profile_visibility: 'everyone' | 'tenants' | 'private';
+    show_phone_after: 'visit' | 'agreement' | 'never';
+  };
 }
 
 /**
@@ -151,3 +178,18 @@ export interface InspectionChecklist {
   };
   deposit_receipt_given: boolean;
 }
+
+/**
+ * Represents a user notification.
+ */
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: 'rent_paid' | 'visit_request' | 'new_message' | 'maintenance_open' | 'rent_due' | 'system';
+  title: string;
+  body: string;
+  link?: string;
+  read: boolean;
+  created_at: string;
+}
+

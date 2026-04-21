@@ -34,9 +34,6 @@ export const RentBuddy: React.FC = () => {
   const [roomContext, setRoomContext] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Hide on login page
-  if (location.pathname === '/login') return null;
-
   // Detect room context if on room detail page
   useEffect(() => {
     const match = location.pathname.match(/\/room\/([a-zA-Z0-9-]+)/);
@@ -59,12 +56,15 @@ export const RentBuddy: React.FC = () => {
     } else {
       setRoomContext(null);
     }
-  }, [location.pathname]);
+  }, [location.pathname, fetchRoomById]);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  // Hide on login page - MOVED AFTER HOOKS
+  if (location.pathname === '/login') return null;
 
   const handleSend = () => {
     if (!inputValue.trim() || isLoading) return;

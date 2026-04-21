@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useRooms } from '@/hooks/useRooms';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
@@ -56,7 +55,6 @@ const LocationMarker = ({ position, setPosition }: { position: L.LatLng, setPosi
  */
 export default function AddRoom() {
   const { profile, user } = useAuth();
-  const { addRoom } = useRooms();
   const navigate = useNavigate();
 
   // Protect route for Landlords only
@@ -259,7 +257,7 @@ export default function AddRoom() {
     }
 
     // 2. Insert Room
-    // We combine the extra fields into the description safely to match our schema
+    // 1. Validate required fields
     const finalDescription = `${form.description}\n\nGender Preference: ${form.gender_preference}\nFloor: ${form.floor_number} of ${form.total_floors}`;
 
     const { data: dbData, error: dbError } = await (supabase as any)
