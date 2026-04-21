@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Bell as BellIcon, 
@@ -8,8 +8,7 @@ import {
   MessageSquare, 
   Settings, 
   AlertCircle,
-  Megaphone,
-  CheckCircle2
+  Megaphone
 } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { format, isToday, isWithinInterval, subDays, startOfToday } from 'date-fns';

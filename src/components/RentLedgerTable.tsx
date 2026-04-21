@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { FeatureGate } from './FeatureGate';
-import { usePlan } from '@/hooks/usePlan';
 import type { RentLedger } from '@/types';
 import { format, subMonths } from 'date-fns';
 import { Printer, CheckCircle, AlertCircle, Clock, X, Download } from 'lucide-react';
@@ -27,7 +26,6 @@ interface RentLedgerTableProps {
  * WHAT IT DOES: Renders a matrix of tenants by generated months to track rent payments easily. Allows printing formatted ledgers.
  */
 export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries, onUpdate }) => {
-  const { canAccess } = usePlan();
   const [selectedCell, setSelectedCell] = useState<RentLedgerExtended | null>(null);
   const [editAmount, setEditAmount] = useState<string>('');
   const [editUtility, setEditUtility] = useState<string>('');
@@ -114,7 +112,7 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center mb-2 no-print">
         <h3 className="text-xl font-bold text-gray-900">KhataBook View</h3>
-        <FeatureGate feature="export_pdf">
+        <FeatureGate feature="export_pdf" requiredPlan="pro">
           <button 
             onClick={handlePrint}
             className="flex items-center justify-center gap-2 min-h-[44px] bg-white hover:bg-gray-50 text-gray-700 font-bold px-4 py-2 rounded-xl border-2 border-gray-200 shadow-sm transition-all"
@@ -286,7 +284,7 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
 
                  <div className="mt-2 flex flex-col gap-3">
                     {lastPaidId ? (
-                      <FeatureGate feature="pdf_receipts">
+                      <FeatureGate feature="pdf_receipts" requiredPlan="pro">
                         <button 
                           onClick={() => openReceipt(lastPaidId)}
                           className="w-full bg-slate-900 text-white font-bold py-3.5 min-h-[44px] rounded-xl shadow-lg active:scale-[0.98] transition-all flex justify-center items-center gap-2 animate-in zoom-in-90 duration-300"
@@ -306,7 +304,7 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                           </button>
                         )}
                         {selectedCell.status === 'paid' && (
-                          <FeatureGate feature="pdf_receipts">
+                          <FeatureGate feature="pdf_receipts" requiredPlan="pro">
                             <button 
                               onClick={() => openReceipt(selectedCell.id)}
                               className="w-full bg-slate-100 text-slate-700 font-bold py-3 min-h-[44px] rounded-xl hover:bg-slate-200 transition-all flex justify-center items-center gap-2 border border-slate-200"

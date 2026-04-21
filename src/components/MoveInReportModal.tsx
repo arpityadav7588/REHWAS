@@ -93,7 +93,7 @@ export const MoveInReportModal: React.FC<MoveInReportModalProps> = ({ tenant, on
       }
 
       // 2. Create the report record
-      const { data: report, error: reportError } = await supabase
+      const { error: insertError } = await supabase
         .from('move_in_reports')
         .insert([{
           tenant_id: tenant.id,
@@ -108,7 +108,11 @@ export const MoveInReportModal: React.FC<MoveInReportModalProps> = ({ tenant, on
         .select()
         .single();
 
-      if (reportError) throw reportError;
+      if (insertError) {
+        toast.error('Failed to save report to database');
+        return;
+      }
+
 
       // 3. Send automated chat notification to tenant
       await supabase.from('messages').insert([{

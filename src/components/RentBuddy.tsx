@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { 
-  Sparkles, X, Send, Bot, User, Loader2, AlertCircle, Trash2, ChevronRight
-} from 'lucide-react';
+import { Sparkles, X, Send, Bot, Loader2, AlertCircle, Trash2, ChevronRight } from 'lucide-react';
 import { useRentBuddy } from '@/hooks/useRentBuddy';
 import { useRooms } from '@/hooks/useRooms';
 import { useAuth } from '@/hooks/useAuth';
-import type { Room } from '@/types';
+
 
 const SUGGESTED_PROMPTS = {
   tenants: [

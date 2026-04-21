@@ -217,32 +217,7 @@ export default function LandlordDashboard() {
     });
   };
 
-  const handleAddExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profile) return;
-    
-    setAddingExpense(true);
-    const { error } = await addExpense({
-      landlord_id: profile.id,
-      room_id: expenseRoomId,
-      category: expenseCategory,
-      amount: Number(expenseAmount),
-      description: expenseDescription,
-      expense_date: expenseDate,
-    });
 
-    if (error) {
-      toast.error('Failed to record expense');
-    } else {
-      toast.success(`Expense recorded ₹${expenseAmount} for ${expenseCategory}`);
-      setIsExpenseModalOpen(false);
-      loadPLData();
-      // Reset
-      setExpenseAmount('');
-      setExpenseDescription('');
-    }
-    setAddingExpense(false);
-  };
 
   useEffect(() => {
     if (!authLoading && !profile) {

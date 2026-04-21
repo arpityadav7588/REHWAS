@@ -33,7 +33,7 @@ export const TenantRentScore: React.FC<TenantRentScoreProps> = ({ tenantId, comp
     );
   }
 
-  const { grade, percentage, totalMonths, onTimeMonths, lateMonths, unpaidMonths, history } = scoreData;
+  const { grade, percentage, totalMonths, onTimeMonths, lateMonths, history } = scoreData;
 
   // Visual configuration based on grade
   const getConfig = () => {

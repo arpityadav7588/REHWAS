@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  ArrowRight, Search, MessageSquare, Home as HomeIcon, CheckCircle2, TrendingUp, Sparkles, Building2, ShieldCheck, IndianRupee, Key, Zap, Star, Camera, Users, FileText, Map, BookOpen, MapPin, Loader2
+  ArrowRight, Search, MessageSquare, Home as HomeIcon, Building2, ShieldCheck, Camera, Users, FileText, Map, BookOpen, MapPin, Loader2
 } from 'lucide-react';
 import { usePlatformStats } from '@/hooks/usePlatformStats';
 import toast from 'react-hot-toast';

@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  CheckCircle2, Circle, ArrowRight, X, 
-  User, Home, Users, BookOpen, Send, Sparkles 
+  CheckCircle2, Circle, X, Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRooms } from '@/hooks/useRooms';
 import { useLedger } from '@/hooks/useLedger';
 import { supabase } from '@/lib/supabase';
 import { differenceInDays, parseISO } from 'date-fns';
-import toast from 'react-hot-toast';
 
 /**
  * OnboardingChecklist Component

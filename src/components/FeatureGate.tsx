@@ -16,8 +16,8 @@ interface FeatureGateProps {
  * ANALOGY: Like a "VIP Only" rope in a club that shows you what's inside but prevents entry without the right badge.
  */
 export const FeatureGate = ({ feature, requiredPlan, children }: FeatureGateProps) => {
-  const { canAccess, plan } = usePlan();
-  const hasAccess = canAccess(feature);
+  const { hasFeature } = usePlan();
+  const hasAccess = hasFeature(feature);
 
   if (hasAccess) {
     return <>{children}</>;

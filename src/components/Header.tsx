@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Plus, Search, Map, LayoutDashboard, Settings, LogOut, CreditCard, User, Bell, Building2 } from 'lucide-react';
+import { Menu, X, Plus, Building2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationCenter } from './NotificationCenter';
 

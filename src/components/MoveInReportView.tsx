@@ -3,9 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { format, parseISO } from 'date-fns';
-import { ShieldCheck, User, Home, Calendar, MapPin, CheckCircle2, AlertCircle, Printer, Download, Share2, Loader2, Sparkles } from 'lucide-react';
+import { ShieldCheck, User, Home, MapPin, CheckCircle2, AlertCircle, Printer, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { MoveInReport } from '@/types';
 
 /**
  * MoveInReportView
