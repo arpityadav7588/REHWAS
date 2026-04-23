@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import type { Room } from '@/types';
 import { MapPin, BedDouble, ShieldCheck, Wifi, Tv, Wind, Zap } from 'lucide-react';
+import { VacantRoomCTA } from './EmptyState';
+
 
 /**
  * Props for the RoomCard component
@@ -103,6 +105,10 @@ export const RoomCard: React.FC<RoomCardProps> = ({ room, compact = false }) => 
              View Room <span className="group-hover/btn:translate-x-1 transition-transform">&rarr;</span>
           </Link>
         </div>
+
+        {room.available && (
+          <VacantRoomCTA roomId={room.id} roomName={room.title} />
+        )}
       </div>
     </div>
   );

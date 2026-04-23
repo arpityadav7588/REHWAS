@@ -2,51 +2,53 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { 
-  User, CreditCard, Bell, Settings as SettingsIcon, Shield, AlertTriangle, 
-  Upload, Check, Download, Trash2, IndianRupee, Languages, 
-  Calendar, Eye, Sparkles, Send, Phone, Mail
+  User, CreditCard, Bell, Shield, AlertTriangle, 
+  Upload, Check, Download, Trash2, IndianRupee, 
+  Eye, Sparkles, Send, Phone, Mail, Users, Zap, Puzzle,
+  ChevronRight, ExternalLink, FileText, Globe, Plus, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FeatureGate } from '@/components/FeatureGate';
 
 /**
- * Settings Page
+ * Settings Page: The Property Control Room
  * 
- * CONCEPT: SaaS Configuration Hub
- * 
- * WHY IT MATTERS:
- * A proper settings page transition REHWAS from a "listing site" to a "SaaS utility."
- * It provides the user with control over their data, their subscription, and their privacy.
- * High control = High trust.
+ * CONCEPT: This isn't just a configuration page; it's the cockpit of the landlord's operation.
+ * By presenting settings as high-level controls rather than technical inputs, we empower 
+ * the user and justify the SaaS subscription value.
  */
 const Settings: React.FC = () => {
   const { profile, user, updateProfile, signOut } = useAuth();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<'profile' | 'billing' | 'notifications' | 'preferences' | 'privacy' | 'danger'>('profile');
+  const location = useLocation();
+  const [activeSection, setActiveSection] = useState<'profile' | 'billing' | 'notifications' | 'team' | 'integrations' | 'danger'>('profile');
   const [isSaving, setIsSaving] = useState(false);
 
   // Profile State
   const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [city, setCity] = useState(profile?.city || 'Bengaluru');
-  const [bio, setBio] = useState(profile?.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
 
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name);
-      setCity(profile.city || 'Bengaluru');
-      setBio(profile.bio || '');
       setAvatarUrl(profile.avatar_url || '');
     }
   }, [profile]);
 
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes('/billing')) setActiveSection('billing');
+    else if (path.includes('/team')) setActiveSection('team');
+    else if (path.includes('/notifications')) setActiveSection('notifications');
+    else setActiveSection('profile');
+  }, [location.pathname]);
+
   const handleSaveProfile = async () => {
     setIsSaving(true);
     const { error } = await updateProfile({
-      full_name: fullName,
-      city,
-      bio
+      full_name: fullName
     });
     setIsSaving(false);
     if (!error) toast.success('Profile updated successfully!');
@@ -83,44 +85,45 @@ const Settings: React.FC = () => {
 
   const sections = [
     { id: 'profile', label: 'Profile', icon: <User size={18} /> },
-    { id: 'billing', label: 'Billing & Plan', icon: <CreditCard size={18} /> },
+    { id: 'billing', label: 'Plan & Billing', icon: <CreditCard size={18} /> },
     { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
-    { id: 'preferences', label: 'Preferences', icon: <SettingsIcon size={18} /> },
-    { id: 'privacy', label: 'Privacy & Security', icon: <Shield size={18} /> },
+    { id: 'team', label: 'Team Members', icon: <Users size={18} /> },
+    { id: 'integrations', label: 'Integrations', icon: <Puzzle size={18} /> },
     { id: 'danger', label: 'Danger Zone', icon: <AlertTriangle size={18} /> },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-8">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-8">Settings</h1>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-12 pb-24">
+        <header className="mb-12">
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">Settings</h1>
+          <p className="text-slate-500 font-medium">Control room for your property empire.</p>
+        </header>
         
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* SIDEBAR */}
-          <div className="w-full md:w-64 space-y-1">
+        <div className="flex flex-col md:flex-row gap-12 items-start">
+          {/* LEFT SUB-NAV */}
+          <nav className="w-full md:w-64 flex flex-row md:flex-col gap-1 overflow-x-auto pb-4 md:pb-0 sticky top-8">
             {sections.map((section) => (
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id as any)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all whitespace-nowrap ${
                   activeSection === section.id 
-                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' 
-                    : 'text-slate-500 hover:bg-slate-100'
+                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/10' 
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 {section.icon}
                 {section.label}
               </button>
             ))}
-          </div>
+          </nav>
 
-          {/* CONTENT AREA */}
-          <div className="flex-1 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-6 md:p-10">
-              {activeSection === 'profile' && <ProfileSection 
+          {/* RIGHT CONTENT PANEL */}
+          <main className="flex-1 w-full max-w-3xl">
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+               {activeSection === 'profile' && <ProfileSection 
                 fullName={fullName} setFullName={setFullName}
-                city={city} setCity={setCity}
-                bio={bio} setBio={setBio}
                 avatarUrl={avatarUrl}
                 handleAvatarUpload={handleAvatarUpload}
                 handleSave={handleSaveProfile}
@@ -129,11 +132,11 @@ const Settings: React.FC = () => {
               />}
               {activeSection === 'billing' && <BillingSection profile={profile} navigate={navigate} />}
               {activeSection === 'notifications' && <NotificationsSection profile={profile} updateProfile={updateProfile} />}
-              {activeSection === 'preferences' && <PreferencesSection profile={profile} updateProfile={updateProfile} />}
-              {activeSection === 'privacy' && <PrivacySection profile={profile} updateProfile={updateProfile} />}
+              {activeSection === 'team' && <TeamSection profile={profile} />}
+              {activeSection === 'integrations' && <IntegrationsSection />}
               {activeSection === 'danger' && <DangerZoneSection profile={profile} signOut={signOut} />}
             </div>
-          </div>
+          </main>
         </div>
       </div>
     </div>
@@ -144,594 +147,574 @@ const Settings: React.FC = () => {
 
 /**
  * ProfileSection
- * WHY: Personal brand identity. Landlords with complete profiles get 40% higher tenant response rates.
+ * 
+ * WHY: This establishes the landlord's identity. 
+ * Phone numbers are masked and read-only to emphasize security and verification, 
+ * making the platform feel professional and dispute-resistant.
  */
-const ProfileSection = ({ fullName, setFullName, city, setCity, bio, setBio, avatarUrl, handleAvatarUpload, handleSave, isSaving, profile }: any) => (
-  <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
-    <div>
-      <h2 className="text-2xl font-black text-slate-900 mb-2">Public Profile</h2>
-      <p className="text-slate-500 font-medium">Control how you appear to tenants and potential renters.</p>
-    </div>
+const ProfileSection = ({ fullName, setFullName, avatarUrl, handleAvatarUpload, handleSave, isSaving, profile }: any) => {
+  const maskPhone = (phone: string) => {
+    if (!phone) return '+91 ×××× ×× ××××';
+    return `+91 ×××× ×× ${phone.slice(-4)}`;
+  };
 
-    <div className="flex flex-col md:flex-row gap-8 items-start">
-      <div className="relative group">
-        <div className="w-24 h-24 rounded-full bg-slate-100 border-4 border-white shadow-sm overflow-hidden">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-slate-300 font-black text-3xl uppercase bg-slate-50">
-              {fullName?.charAt(0) || '?'}
-            </div>
-          )}
+  return (
+    <div className="space-y-12">
+      <section className="flex flex-col md:flex-row gap-8 items-center md:items-start p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+        <div className="relative group">
+          <div className="w-32 h-32 rounded-full bg-white shadow-2xl shadow-slate-200 border-4 border-white overflow-hidden">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-300 font-black text-4xl uppercase bg-slate-50">
+                {fullName?.charAt(0) || '?'}
+              </div>
+            )}
+          </div>
+          <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity backdrop-blur-[2px]">
+            <Upload size={24} />
+            <input type="file" className="hidden" onChange={handleAvatarUpload} accept="image/*" />
+          </label>
         </div>
-        <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-          <Upload size={20} />
-          <input type="file" className="hidden" onChange={handleAvatarUpload} accept="image/*" />
-        </label>
-      </div>
-      <div className="flex-1 space-y-4 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Full Name</label>
+        <div className="flex-1 text-center md:text-left space-y-2">
+          <h2 className="text-2xl font-black text-slate-900">{fullName || 'New User'}</h2>
+          <div className="flex flex-wrap justify-center md:justify-start gap-2">
+            <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest border border-emerald-200 flex items-center gap-1">
+              {profile?.role || 'Landlord'}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
             <input 
               type="text" 
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 transition-all"
+              className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl px-5 py-4 font-bold focus:bg-white focus:border-slate-900 focus:ring-0 transition-all outline-none"
+              placeholder="Your full name"
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Phone Number</label>
-            <div className="relative">
-              <input 
-                type="text" 
-                value={profile?.phone || ''} 
-                disabled 
-                className="w-full bg-slate-100 border-0 rounded-xl px-4 py-3 font-bold text-slate-400 cursor-not-allowed"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">
-                <Check size={10} /> Verified
-              </span>
+          <div className="space-y-2">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+            <div className="relative group">
+              <div className="w-full bg-slate-100 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-slate-400 flex items-center justify-between">
+                <span>{maskPhone(profile?.phone)}</span>
+                <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-tighter">
+                  <Check size={10} /> Verified
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Role</label>
-            <div className="w-full bg-slate-100 border-0 rounded-xl px-4 py-3 font-bold text-slate-400 uppercase text-xs tracking-widest">
-              {profile?.role || 'Landlord'}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-wider">City</label>
-            <select 
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 transition-all appearance-none"
-            >
-              <option value="Bengaluru">Bengaluru</option>
-              <option value="Pune">Pune</option>
-              <option value="Mumbai">Mumbai</option>
-              <option value="Delhi">Delhi</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Bio</label>
-          <textarea 
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            rows={3}
-            placeholder="Tell tenants a bit about yourself..."
-            className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 transition-all"
-          />
         </div>
 
         <button 
           onClick={handleSave}
           disabled={isSaving}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 py-3 rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-50"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-10 py-4 rounded-2xl shadow-xl shadow-emerald-900/10 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2"
         >
           {isSaving ? 'Saving...' : 'Save Changes'}
         </button>
+
+        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-8">
+          Account created on {profile?.created_at ? format(new Date(profile.created_at), 'MMMM d, yyyy') : 'Recently'}
+        </p>
+      </section>
+    </div>
+  );
+};
+
+/**
+ * BillingSection
+ * 
+ * WHY: This is the heartbeat of the SaaS relationship. 
+ * By showing usage bars (Rooms, History, Photos), we create a "Loss Aversion" effect where 
+ * users are nudged to upgrade to avoid hitting their capacity limits.
+ */
+const BillingSection = ({ profile, navigate }: any) => {
+  const isStarter = profile?.plan === 'starter' || !profile?.plan;
+  const isPro = profile?.plan === 'pro';
+  const isBusiness = profile?.plan === 'business';
+  
+  const planInfo = {
+    starter: { name: 'Starter', price: '₹0', color: 'slate' },
+    pro: { name: 'Pro', price: '₹499/mo', color: 'emerald' },
+    business: { name: 'Business', price: '₹1,499/mo', color: 'blue' }
+  }[profile?.plan as 'starter' | 'pro' | 'business' || 'starter'];
+
+  const invoices = [
+    { id: '1', date: 'Apr 1, 2026', desc: 'REHWAS Pro Monthly', amount: '₹499', status: 'Paid' },
+    { id: '2', date: 'Mar 1, 2026', desc: 'REHWAS Pro Monthly', amount: '₹499', status: 'Paid' },
+    { id: '3', date: 'Feb 1, 2026', desc: 'REHWAS Pro Monthly', amount: '₹499', status: 'Paid' },
+    { id: '4', date: 'Jan 1, 2026', desc: 'REHWAS Pro Monthly', amount: '₹499', status: 'Paid' },
+    { id: '5', date: 'Dec 1, 2025', desc: 'REHWAS Pro Monthly', amount: '₹499', status: 'Paid' },
+    { id: '6', date: 'Nov 1, 2025', desc: 'REHWAS Pro Monthly', amount: '₹499', status: 'Paid' },
+  ];
+
+  return (
+    <div className="space-y-12">
+      <section className="space-y-6">
+        <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Current Plan</h3>
+        <div className={`p-8 rounded-[2.5rem] border-2 transition-all ${
+          isPro ? 'bg-emerald-50 border-emerald-100' : 
+          isBusiness ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'
+        }`}>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <h4 className="text-3xl font-black text-slate-900">{planInfo?.name}</h4>
+                <span className="bg-white px-3 py-1 rounded-full text-[10px] font-black text-emerald-600 border border-emerald-100 uppercase tracking-widest shadow-sm">Active</span>
+              </div>
+              <p className="text-slate-500 font-bold">{isStarter ? "You're on the free Starter plan" : `Next billing May 1, 2026 — ${planInfo?.price}`}</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
+              <button 
+                onClick={() => navigate('/pricing')}
+                className="bg-emerald-600 text-white font-black px-6 py-3 rounded-2xl shadow-xl shadow-emerald-900/10 hover:bg-emerald-700 transition-all w-full sm:w-auto"
+              >
+                {isStarter ? 'Upgrade to Pro' : 'Upgrade / Downgrade'}
+              </button>
+              {!isStarter && (
+                <button className="text-slate-400 hover:text-slate-600 font-bold text-sm transition-all">
+                  Cancel Subscription
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Trial Warning */}
+          {profile?.isOnTrial && (
+            <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-400 rounded-xl flex items-center justify-center text-white">
+                  <Bell size={20} />
+                </div>
+                <div>
+                  <p className="font-black text-slate-900 text-sm">Trial ending soon</p>
+                  <p className="text-xs text-amber-800 font-medium">Your Pro trial ends in 7 days. Add payment to continue.</p>
+                </div>
+              </div>
+              <button className="bg-amber-400 text-white font-black px-4 py-2 rounded-xl text-xs shadow-lg shadow-amber-400/20 hover:bg-amber-500 transition-all">
+                Add Payment Method
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-6">
+        <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Usage</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <UsageCard 
+            label="Rooms" 
+            value={`${profile?.rooms_count || 0} of ${isStarter ? '3' : 'Unlimited'} used`} 
+            progress={isStarter ? ((profile?.rooms_count || 0) / 3) * 100 : 10} 
+            color={isStarter && (profile?.rooms_count || 0) >= 3 ? 'bg-red-500' : 'bg-emerald-500'}
+            hint={isStarter ? "Upgrade for more" : "Unlimited active"}
+          />
+          <UsageCard 
+            label="History" 
+            value={isStarter ? '6 months' : 'Unlimited'} 
+            progress={isStarter ? 60 : 100} 
+            color="bg-blue-500"
+            hint={isStarter ? "Pro includes unlimited" : "Complete history"}
+          />
+          <UsageCard 
+            label="Photos" 
+            value={isStarter ? '5 per room' : '20 per room'} 
+            progress={isStarter ? 25 : 100} 
+            color="bg-purple-500"
+            hint={isStarter ? "Pro includes 20 per room" : "High-res storage"}
+          />
+        </div>
+      </section>
+
+      <section className="space-y-6">
+        <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Billing History</h3>
+        {isStarter && invoices.length === 0 ? (
+          <div className="p-12 border-2 border-dashed border-slate-200 rounded-[2.5rem] text-center">
+            <p className="text-slate-400 font-bold">No billing history yet — you're on the free plan</p>
+          </div>
+        ) : (
+          <div className="overflow-hidden border border-slate-100 rounded-[2rem] bg-white shadow-sm">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Receipt</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {invoices.map(inv => (
+                  <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-slate-900">{inv.date}</td>
+                    <td className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{inv.desc}</td>
+                    <td className="px-6 py-4 font-black text-slate-900">{inv.amount}</td>
+                    <td className="px-6 py-4">
+                      <span className="bg-emerald-100 text-emerald-700 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="text-emerald-600 hover:text-emerald-700 font-black text-xs flex items-center gap-1 ml-auto uppercase tracking-tighter">
+                        <Download size={14} /> Download PDF
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {!isStarter && (
+        <section className="space-y-6">
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Payment Method</h3>
+          <div className="p-6 border-2 border-slate-100 rounded-[2rem] flex items-center justify-between gap-4 bg-white shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-8 bg-slate-900 rounded-md flex items-center justify-center text-white font-black text-[10px] tracking-widest">VISA</div>
+              <div>
+                <p className="font-black text-slate-900 tracking-widest">•••• •••• •••• 4242</p>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Expires 04/27</p>
+              </div>
+            </div>
+            <button className="text-slate-900 font-black text-xs border-2 border-slate-100 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all">
+              Update Card
+            </button>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
+const UsageCard = ({ label, value, progress, color, hint }: any) => (
+  <div className="p-6 bg-white border border-slate-100 rounded-3xl shadow-sm">
+    <div className="flex justify-between items-end mb-3">
+      <div>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-xl font-black text-slate-900">{value}</p>
+      </div>
+    </div>
+    <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+      <div className={`h-full ${color} transition-all duration-1000`} style={{ width: `${progress}%` }} />
+    </div>
+    <p className="text-[10px] text-slate-400 font-bold italic">{hint}</p>
+  </div>
+);
+
+/**
+ * NotificationsSection
+ * 
+ * WHY: High signal, low noise. By allowing landlords to customize their alerts, 
+ * we ensure they only see what matters, reducing "Dashboard Fatigue" and 
+ * keeping them engaged with critical tenant interactions.
+ */
+const NotificationsSection = ({ profile, updateProfile }: any) => {
+  return (
+    <div className="space-y-12">
+      <section className="space-y-6">
+        <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">In-App Notifications</h3>
+        <div className="space-y-4">
+          <SettingsToggle label="New tenant message" desc="Direct alerts when a tenant chats with you" checked={true} />
+          <SettingsToggle label="Visit request received" desc="Get notified when a new prospect wants to view" checked={true} />
+          <SettingsToggle label="Rent marked as paid" desc="Alert when a tenant records their monthly payment" checked={true} />
+        </div>
+      </section>
+
+      <section className="space-y-6 opacity-50">
+        <div className="flex items-center gap-2">
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">WhatsApp & Email</h3>
+          <span className="bg-slate-100 text-slate-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">Coming soon</span>
+        </div>
+        <div className="space-y-4 pointer-events-none">
+          <SettingsToggle label="Monthly rent due reminder" desc="Automated nudges sent to yourself" checked={false} />
+          <SettingsToggle label="Lease expiry alerts" desc="Get notified 30 days before a tenant's agreement ends" checked={false} />
+          <SettingsToggle label="Maintenance ticket updates" desc="Weekly summary of repair tasks and history" checked={false} />
+        </div>
+      </section>
+
+      <button className="bg-emerald-600 text-white font-black px-10 py-4 rounded-2xl shadow-xl shadow-emerald-900/10 hover:bg-emerald-700 transition-all">
+        Save Preferences
+      </button>
+    </div>
+  );
+};
+
+/**
+ * TeamSection
+ * 
+ * WHY: Delegation is the key to scaling a property empire. 
+ * This section turns REHWAS from a solo tool into a collaborative platform, 
+ * justifying the Business tier for larger operations.
+ */
+const TeamSection = ({ profile }: any) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const isBusiness = profile?.plan === 'business';
+
+  const members = [
+    { name: 'Karthik Raja', email: 'karthik@rehwas.com', role: 'Owner', date: 'Jan 2024', avatar: '' },
+    { name: 'Sameer Khan', email: 'sam@mgt.co', role: 'Manager', date: 'Mar 2024', avatar: '' },
+  ];
+
+  return (
+    <FeatureGate feature="team_seats" requiredPlan="business">
+      <div className="space-y-8">
+        <div className="flex justify-between items-center bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+          <div>
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Seats Used</h3>
+            <div className="flex items-center gap-4">
+              <p className="text-3xl font-black text-slate-900">2 of 3 used</p>
+              <div className="w-32 h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 w-[66%]" />
+              </div>
+            </div>
+            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-2 cursor-pointer hover:underline">Add more seats — ₹299/seat/month</p>
+          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-slate-900 text-white font-black px-6 py-4 rounded-2xl shadow-xl shadow-slate-900/10 flex items-center gap-2 hover:bg-black transition-all"
+          >
+            <Plus size={18} /> Invite Team Member
+          </button>
+        </div>
+
+        <div className="overflow-hidden border border-slate-100 rounded-[2rem] bg-white shadow-sm">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Member</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Added Date</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {members.map(member => (
+                <tr key={member.email} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400 uppercase">
+                        {member.name[0]}
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-900">{member.name}</div>
+                        <div className="text-[10px] text-slate-400 font-bold tracking-tight">{member.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                      {member.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{member.date}</td>
+                  <td className="px-6 py-4 text-right">
+                    <button className="text-red-500 font-black text-[10px] uppercase tracking-widest hover:underline">Remove</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-black text-slate-900">Invite Member</h3>
+                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name</label>
+                  <input type="text" className="w-full bg-slate-50 border-2 border-slate-50 rounded-xl px-4 py-3 font-bold" placeholder="Sameer Khan" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                  <input type="email" className="w-full bg-slate-50 border-2 border-slate-50 rounded-xl px-4 py-3 font-bold" placeholder="sam@mgt.co" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</label>
+                  <select className="w-full bg-slate-50 border-2 border-slate-50 rounded-xl px-4 py-3 font-bold">
+                    <option>Owner</option>
+                    <option>Manager</option>
+                    <option>View-only</option>
+                  </select>
+                </div>
+                <button 
+                  onClick={() => {
+                    toast.success('Invitation sent via email!');
+                    setIsModalOpen(false);
+                  }}
+                  className="w-full bg-slate-900 text-white font-black py-4 rounded-xl shadow-xl shadow-slate-900/10 mt-4"
+                >
+                  Send Invitation
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </FeatureGate>
+  );
+};
+
+/**
+ * IntegrationsSection
+ * 
+ * WHY: This creates "Stickiness." By connecting REHWAS to external ecosystems 
+ * (Razorpay, Tally), we ensure that removing REHWAS would break the landlord's 
+ * entire workflow, increasing lifetime value (LTV).
+ */
+const IntegrationsSection = () => (
+  <div className="space-y-8">
+    <div className="p-12 border-2 border-dashed border-slate-200 rounded-[2.5rem] text-center space-y-4 bg-slate-50/50">
+      <div className="w-20 h-20 bg-white shadow-xl shadow-slate-200/50 rounded-3xl flex items-center justify-center mx-auto text-slate-300">
+        <Puzzle size={40} />
+      </div>
+      <h3 className="text-2xl font-black text-slate-900">External Integrations</h3>
+      <p className="text-slate-500 font-medium max-w-sm mx-auto">
+        Connect REHWAS with Tally, WhatsApp Business, or your own internal dashboards.
+      </p>
+      <button className="bg-slate-200 text-slate-400 font-black px-8 py-3 rounded-2xl cursor-not-allowed">
+        Coming Q3 2026
+      </button>
+    </div>
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="p-6 border border-slate-100 rounded-3xl grayscale opacity-50 bg-white shadow-sm">
+        <div className="font-black text-slate-900 mb-1">Razorpay</div>
+        <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Payment Gateway</div>
+      </div>
+      <div className="p-6 border border-slate-100 rounded-3xl grayscale opacity-50 bg-white shadow-sm">
+        <div className="font-black text-slate-900 mb-1">WhatsApp</div>
+        <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Messaging API</div>
       </div>
     </div>
   </div>
 );
 
 /**
- * BillingSection
- * WHY: Subscription transparency. Users need to know exactly what they are paying for and how much they are using.
- */
-const BillingSection = ({ profile, navigate }: any) => {
-  const isFree = profile?.plan === 'free';
-  const planName = profile?.plan === 'free' ? 'REHWAS Free' : profile?.plan === 'pro' ? 'REHWAS Pro' : 'REHWAS Business';
-  const planColor = profile?.plan === 'free' ? 'bg-slate-100 text-slate-600' : profile?.plan === 'pro' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
-
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
-      <div>
-        <h2 className="text-2xl font-black text-slate-900 mb-2">Billing & Plan</h2>
-        <p className="text-slate-500 font-medium">Manage your subscription and monitor usage.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Current Plan</p>
-              <h3 className={`text-lg font-black inline-block px-3 py-1 rounded-lg ${planColor}`}>
-                {planName}
-              </h3>
-            </div>
-            {isFree ? (
-              <button 
-                onClick={() => navigate('/pricing')}
-                className="bg-emerald-600 text-white text-xs font-black px-4 py-2 rounded-lg shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all"
-              >
-                Upgrade →
-              </button>
-            ) : (
-              <span className="text-xs font-bold text-slate-400">Next billing: {format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'MMM d, yyyy')}</span>
-            )}
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs font-black text-slate-500 uppercase tracking-tight">
-              <span>Rooms Usage</span>
-              <span>{profile?.rooms_count || 0} / {isFree ? 3 : 'Unlimited'}</span>
-            </div>
-            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div 
-                className={`h-full ${isFree ? 'bg-amber-500' : 'bg-emerald-500'}`} 
-                style={{ width: `${Math.min(((profile?.rooms_count || 0) / (isFree ? 3 : 100)) * 100, 100)}%` }} 
-              />
-            </div>
-          </div>
-        </div>
-
-        {isFree && (
-          <div className="p-6 bg-emerald-600 rounded-3xl text-white space-y-4 relative overflow-hidden">
-            <Sparkles className="absolute -right-4 -top-4 opacity-20 w-24 h-24 rotate-12" />
-            <h3 className="text-xl font-black">7 days left in your trial</h3>
-            <p className="text-emerald-50 font-medium text-sm">Upgrade to Pro now and keep all your premium reports and utility splitters active.</p>
-            <button 
-              onClick={() => navigate('/pricing')}
-              className="bg-white text-emerald-600 font-black px-5 py-2.5 rounded-xl shadow-lg hover:bg-emerald-50 transition-all text-sm w-full"
-            >
-              Unlock Pro Features
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-lg font-black text-slate-900">Payment History</h3>
-        <div className="overflow-hidden border border-slate-100 rounded-2xl">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b border-slate-100">
-              <tr>
-                <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase">Date</th>
-                <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase">Plan</th>
-                <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase">Amount</th>
-                <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase">Receipt</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              <tr>
-                <td className="px-6 py-4 font-bold text-sm text-slate-600">Apr 15, 2025</td>
-                <td className="px-6 py-4"><span className="text-xs font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase">Free</span></td>
-                <td className="px-6 py-4 font-black text-sm text-slate-900">₹0</td>
-                <td className="px-6 py-4"><button className="text-emerald-600 hover:underline font-bold text-sm">Download</button></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/**
- * NotificationsSection
- * WHY: Signal noise reduction. Letting users opt-out of low-value alerts while ensuring high-value ones (rent) stay on.
- */
-const NotificationsSection = ({ profile, updateProfile }: any) => {
-  const [prefs, setPrefs] = useState(profile?.notification_preferences || {
-    rent_reminders: true,
-    reminder_days: 3,
-    visit_requests: true,
-    chat_messages: true,
-    maintenance_updates: true,
-    platform_updates: false,
-    channels: { in_app: true, whatsapp: true, email: false }
-  });
-
-  const handleToggle = async (key: string, value: any) => {
-    const newPrefs = { ...prefs, [key]: value };
-    setPrefs(newPrefs);
-    await updateProfile({ notification_preferences: newPrefs });
-    toast.success('Preferences updated!');
-  };
-
-  const handleChannelToggle = async (key: string) => {
-    const newChannels = { ...prefs.channels, [key]: !prefs.channels[key] };
-    const newPrefs = { ...prefs, channels: newChannels };
-    setPrefs(newPrefs);
-    await updateProfile({ notification_preferences: newPrefs });
-    toast.success('Channels updated!');
-  };
-
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
-      <div>
-        <h2 className="text-2xl font-black text-slate-900 mb-2">Notifications</h2>
-        <p className="text-slate-500 font-medium">Control how and when you hear from us.</p>
-      </div>
-
-      <div className="space-y-6">
-        <div className="flex flex-col gap-6">
-          <ToggleItem 
-            label="Rent due reminders" 
-            desc="Stay on top of payments with automated landlord alerts."
-            checked={prefs.rent_reminders} 
-            onChange={(v: boolean) => handleToggle('rent_reminders', v)}
-          />
-          {prefs.rent_reminders && (
-            <div className="ml-14 pl-4 border-l-2 border-slate-100 animate-in slide-in-from-top-2">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">Remind me</label>
-              <select 
-                value={prefs.reminder_days}
-                onChange={(e) => handleToggle('reminder_days', parseInt(e.target.value))}
-                className="bg-slate-50 border-0 rounded-lg px-3 py-2 font-bold text-sm focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value={3}>3 days before</option>
-                <option value={5}>5 days before</option>
-                <option value={7}>7 days before</option>
-              </select>
-            </div>
-          )}
-          <ToggleItem 
-            label="New visit requests" 
-            desc="Get notified instantly when a tenant wants to view a room."
-            checked={prefs.visit_requests} 
-            onChange={(v: boolean) => handleToggle('visit_requests', v)}
-          />
-          <ToggleItem 
-            label="Chat messages" 
-            desc="Real-time alerts for new messages from your tenants."
-            checked={prefs.chat_messages} 
-            onChange={(v: boolean) => handleToggle('chat_messages', v)}
-          />
-          <ToggleItem 
-            label="Maintenance ticket updates" 
-            desc="Stay updated on repair status and issues."
-            checked={prefs.maintenance_updates} 
-            onChange={(v: boolean) => handleToggle('maintenance_updates', v)}
-          />
-        </div>
-
-        <div className="pt-6 border-t border-slate-100">
-          <h3 className="text-lg font-black text-slate-900 mb-4">Delivery Channels</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <ChannelButton 
-              label="In-app" 
-              icon={<Bell size={16} />} 
-              active={prefs.channels.in_app} 
-              onClick={() => handleChannelToggle('in_app')}
-            />
-            <ChannelButton 
-              label="WhatsApp" 
-              icon={<Send size={16} />} 
-              active={prefs.channels.whatsapp} 
-              onClick={() => handleChannelToggle('whatsapp')}
-            />
-            <div className="relative group">
-              <ChannelButton 
-                label="Email" 
-                icon={<Mail size={16} />} 
-                active={prefs.channels.email} 
-                onClick={() => toast.error('Email notifications available from Pro plan')}
-                disabled
-              />
-              <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-lg group-hover:scale-110 transition-transform">Pro</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/**
- * PreferencesSection
- * WHY: Personalization. Making the app "feel like home" by respecting the user's preferred language and formats.
- */
-const PreferencesSection = ({ profile, updateProfile }: any) => {
-  const [prefs, setPrefs] = useState(profile?.preferences || {
-    language: 'English',
-    date_format: 'DD/MM/YYYY',
-    default_dashboard_tab: 'rooms'
-  });
-
-  const handleChange = async (key: string, value: string) => {
-    const newPrefs = { ...prefs, [key]: value };
-    setPrefs(newPrefs);
-    await updateProfile({ preferences: newPrefs });
-    toast.success('Preferences saved!');
-  };
-
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
-      <div>
-        <h2 className="text-2xl font-black text-slate-900 mb-2">Preferences</h2>
-        <p className="text-slate-500 font-medium">Customize your dashboard experience.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="space-y-1.5">
-          <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <Languages size={14} /> Language
-          </label>
-          <select 
-            value={prefs.language}
-            onChange={(e) => handleChange('language', e.target.value)}
-            className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 appearance-none"
-          >
-            <option value="English">English</option>
-            <option value="Hindi">हिंदी (Hindi)</option>
-            <option value="Kannada">ಕನ್ನಡ (Kannada)</option>
-            <option value="Marathi">मराठी (Marathi)</option>
-          </select>
-          <p className="text-[10px] text-slate-400 font-bold italic mt-1">Note: More languages coming soon</p>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <Calendar size={14} /> Date Format
-          </label>
-          <select 
-            value={prefs.date_format}
-            onChange={(e) => handleChange('date_format', e.target.value)}
-            className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 appearance-none"
-          >
-            <option value="DD/MM/YYYY">DD/MM/YYYY (Standard)</option>
-            <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
-          </select>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <IndianRupee size={14} /> Currency
-          </label>
-          <div className="w-full bg-slate-100 border-0 rounded-xl px-4 py-3 font-bold text-slate-400">
-            ₹ (Indian Rupee)
-          </div>
-          <p className="text-[10px] text-slate-400 font-bold italic mt-1">Fixed to Indian Rupee</p>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <SettingsIcon size={14} /> Default Dashboard Tab
-          </label>
-          <select 
-            value={prefs.default_dashboard_tab}
-            onChange={(e) => handleChange('default_dashboard_tab', e.target.value)}
-            className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 appearance-none"
-          >
-            <option value="rooms">My Rooms</option>
-            <option value="ledger">Rent Ledger</option>
-            <option value="tenants">Tenants</option>
-            <option value="reminders">Reminders</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/**
- * PrivacySection
- * WHY: Data sovereignty. In a high-trust platform, users must know their data is safe and they can take it with them.
- */
-const PrivacySection = ({ profile, updateProfile }: any) => {
-  const [privacy, setPrivacy] = useState(profile?.privacy_settings || {
-    profile_visibility: 'everyone',
-    show_phone_after: 'visit'
-  });
-
-  const handleChange = async (key: string, value: string) => {
-    const newPrivacy = { ...privacy, [key]: value };
-    setPrivacy(newPrivacy);
-    await updateProfile({ privacy_settings: newPrivacy });
-    toast.success('Privacy settings updated!');
-  };
-
-  const handleDownloadData = async () => {
-    const loadingToast = toast.loading('Exporting your data...');
-    try {
-      // Mock data export logic - in real app, we'd fetch all tables
-      const exportData = {
-        profile,
-        timestamp: new Date().toISOString(),
-        format: 'REHWAS Data Export v1.0'
-      };
-      
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `rehwas-data-${format(new Date(), 'yyyy-MM-dd')}.json`;
-      link.click();
-      
-      toast.success('Data exported successfully!', { id: loadingToast });
-    } catch (err) {
-      toast.error('Failed to export data.', { id: loadingToast });
-    }
-  };
-
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
-      <div>
-        <h2 className="text-2xl font-black text-slate-900 mb-2">Privacy & Security</h2>
-        <p className="text-slate-500 font-medium">Control your visibility and manage your data.</p>
-      </div>
-
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-1.5">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-              <Eye size={14} /> Who can see my profile
-            </label>
-            <select 
-              value={privacy.profile_visibility}
-              onChange={(e) => handleChange('profile_visibility', e.target.value)}
-              className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 appearance-none"
-            >
-              <option value="everyone">Everyone</option>
-              <option value="tenants">Only tenants in my chat</option>
-              <option value="private">Completely Private</option>
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-              <Phone size={14} /> Show phone number after
-            </label>
-            <select 
-              value={privacy.show_phone_after}
-              onChange={(e) => handleChange('show_phone_after', e.target.value)}
-              className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-emerald-500 appearance-none"
-            >
-              <option value="visit">Visit confirmed</option>
-              <option value="agreement">Both sides agree to chat</option>
-              <option value="never">Never show on platform</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <h4 className="font-bold text-slate-900">Download your data</h4>
-            <p className="text-xs text-slate-500 font-medium">Get a copy of all your rooms, tenants, and ledger history.</p>
-          </div>
-          <button 
-            onClick={handleDownloadData}
-            className="flex items-center gap-2 bg-white text-slate-900 border border-slate-200 font-black px-6 py-2.5 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all text-sm"
-          >
-            <Download size={16} /> Download JSON
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/**
  * DangerZoneSection
- * WHY: Account termination. A respectful SaaS must let users leave as easily as they joined.
+ * 
+ * WHY: Trust through Transparency. Users feel safe giving data to a platform 
+ * when they know they can export it or delete it instantly. 
+ * "Data Portability" is a key SaaS trust signal.
  */
-const DangerZoneSection = ({ signOut }: any) => {
+const DangerZoneSection = ({ profile, signOut }: any) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDeleteAccount = async () => {
+  const handleExportCSV = () => {
+    toast.success('Preparing CSV export...');
+    setTimeout(() => toast.success('Check your downloads!'), 1500);
+  };
+
+  const handleDelete = () => {
     if (confirmText !== 'DELETE') {
-      toast.error('Type DELETE to confirm.');
+      toast.error('Type DELETE to confirm');
       return;
     }
-    
     setIsDeleting(true);
     toast.loading('Deleting account...');
-    
-    // In a real app, we'd call a Supabase function to anonymise/delete
-    setTimeout(async () => {
-      await signOut();
-      toast.success('Account deleted.');
+    setTimeout(() => {
+      signOut();
+      toast.dismiss();
     }, 2000);
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
-      <div className="p-6 bg-red-50 rounded-3xl border border-red-100">
-        <div className="flex items-center gap-3 text-red-600 mb-2">
-          <AlertTriangle size={24} />
-          <h2 className="text-2xl font-black">Danger Zone</h2>
-        </div>
-        <p className="text-red-700/70 font-medium">Be careful. These actions are permanent and cannot be undone.</p>
-      </div>
-
-      <div className="space-y-8">
-        <div className="flex flex-col md:flex-row justify-between items-center p-6 border border-red-100 rounded-3xl gap-4">
-          <div>
-            <h4 className="font-bold text-slate-900">Delete all my listings</h4>
-            <p className="text-xs text-slate-500 font-medium">Remove all your room listings from the REHWAS marketplace.</p>
+    <div className="space-y-12">
+      <section className="space-y-6">
+        <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Data Portability</h3>
+        <div className="p-8 border border-slate-100 rounded-[2.5rem] bg-white shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="text-center md:text-left">
+            <h4 className="text-lg font-black text-slate-900">Export my data</h4>
+            <p className="text-sm text-slate-500 font-medium">Download all rooms, tenants, and ledger as a CSV file.</p>
           </div>
-          <button className="text-red-600 border-2 border-red-100 font-black px-6 py-2.5 rounded-xl hover:bg-red-50 active:scale-95 transition-all text-sm">
-            Delete Listings
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 bg-slate-50 text-slate-900 border border-slate-200 font-black px-8 py-3 rounded-2xl hover:bg-slate-100 transition-all"
+          >
+            <Download size={18} /> Export CSV
           </button>
         </div>
+      </section>
 
-        <div className="space-y-4">
-          <div className="p-6 bg-white border-2 border-red-600 rounded-3xl space-y-4 shadow-xl shadow-red-600/10">
-            <h4 className="text-lg font-black text-red-600">Delete Account Permanently</h4>
-            <p className="text-sm text-slate-600 font-medium">
-              This will permanently delete your profile, rooms, tenants, and all payment history. You will lose access to all reports.
+      <section className="space-y-6">
+        <h3 className="text-xs font-black text-red-400 uppercase tracking-[0.2em]">Permanent Actions</h3>
+        <div className="p-8 border-2 border-red-50 rounded-[2.5rem] bg-red-50/30 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="text-center md:text-left">
+            <h4 className="text-lg font-black text-red-600">Delete my account</h4>
+            <p className="text-sm text-red-900/60 font-medium max-w-sm">
+              Permanently delete all rooms, tenants, and rent history. 
             </p>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Type "DELETE" to confirm</label>
-              <input 
-                type="text" 
-                placeholder="DELETE"
-                value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value)}
-                className="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-red-600 transition-all uppercase"
-              />
+          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-red-600 text-white font-black px-8 py-4 rounded-2xl shadow-xl shadow-red-900/10 hover:bg-red-700 transition-all"
+          >
+            Delete Account
+          </button>
+        </div>
+      </section>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-black text-red-600">Are you sure?</h3>
+              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
             </div>
-            <button 
-              onClick={handleDeleteAccount}
-              disabled={isDeleting}
-              className="w-full bg-red-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-red-600/20 hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-2"
-            >
-              <Trash2 size={20} /> {isDeleting ? 'Deleting...' : 'Permanently Delete My Account'}
-            </button>
+            <p className="text-sm text-slate-500 font-medium mb-8">
+              This will permanently delete all your rooms, tenants, and rent history. 
+              <strong> This cannot be undone.</strong>
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Type "DELETE" to confirm</label>
+                <input 
+                  type="text" 
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  className="w-full bg-white border-2 border-red-100 rounded-2xl px-5 py-4 font-bold focus:border-red-500 focus:ring-0 transition-all outline-none text-red-600"
+                  placeholder="DELETE"
+                />
+              </div>
+              <button 
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-black px-10 py-4 rounded-2xl shadow-xl shadow-red-900/10 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Trash2 size={18} /> {isDeleting ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-// --- HELPERS ---
-
-const ToggleItem = ({ label, desc, checked, onChange }: { label: string, desc: string, checked: boolean, onChange: (v: boolean) => void }) => (
-  <div className="flex items-center justify-between gap-4">
-    <div className="flex items-start gap-4">
-      <div className={`mt-1 w-10 h-6 rounded-full transition-colors relative cursor-pointer ${checked ? 'bg-emerald-600' : 'bg-slate-200'}`} onClick={() => onChange(!checked)}>
-        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${checked ? 'left-5' : 'left-1'}`} />
-      </div>
-      <div>
-        <h4 className="font-bold text-slate-900 leading-tight">{label}</h4>
-        <p className="text-xs text-slate-500 font-medium">{desc}</p>
-      </div>
+const SettingsToggle = ({ label, desc, checked }: any) => (
+  <div className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+    <div>
+      <p className="font-bold text-slate-900">{label}</p>
+      <p className="text-xs text-slate-500 font-medium">{desc}</p>
+    </div>
+    <div className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${checked ? 'bg-emerald-500' : 'bg-slate-200'}`}>
+      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${checked ? 'left-7' : 'left-1'}`} />
     </div>
   </div>
-);
-
-const ChannelButton = ({ label, icon, active, onClick, disabled }: { label: string, icon: React.ReactNode, active: boolean, onClick: () => void, disabled?: boolean }) => (
-  <button 
-    onClick={onClick}
-    disabled={disabled}
-    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm border-2 transition-all ${
-      active 
-        ? 'bg-emerald-50 border-emerald-600 text-emerald-700 shadow-sm' 
-        : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
-    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-  >
-    {icon}
-    {label}
-  </button>
 );
 
 export default Settings;

@@ -13,7 +13,8 @@ export interface Profile {
   aadhaar_hash?: string;
   avatar_url?: string;
   bhoomi_score?: number; // Numeric scale 300-900 (Bhoomi 2.0)
-  plan: 'free' | 'pro' | 'business';
+  plan: 'starter' | 'pro' | 'business';
+  plan_expires_at?: string | null;
   trial_ends_at?: string | null;
   rooms_count: number;
   created_at: string;
@@ -41,6 +42,9 @@ export interface Profile {
     profile_visibility: 'everyone' | 'tenants' | 'private';
     show_phone_after: 'visit' | 'agreement' | 'never';
   };
+  onboarding_completed_steps?: string[];
+  onboarding_dismissed?: boolean;
+  onboarding_reminder_sent?: boolean;
 }
 
 /**

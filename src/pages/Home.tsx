@@ -1,389 +1,526 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  ArrowRight, Search, MessageSquare, Home as HomeIcon, Building2, ShieldCheck, Camera, Users, FileText, Map, BookOpen, MapPin, Loader2
+  ArrowRight, Search, MessageSquare, Home as HomeIcon, Building2, 
+  ShieldCheck, Users, FileText, Map, BookOpen, Zap, 
+  BarChart2, Calendar, Check, Star, Smartphone, Shield
 } from 'lucide-react';
 import { usePlatformStats } from '@/hooks/usePlatformStats';
-import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabase';
 
 /**
- * Animated Counter Component.
- * WHAT IT DOES: Incrementally counts up from 0 to a target number over a specified duration.
- * ANALOGY: A car's speedometer dial rolling up as you accelerate.
+ * SAAS MARKETING PRINCIPLE: SELL THE OUTCOME, NOT THE FEATURE.
+ * 
+ * Instead of "Here is a table," we sell "Run your rentals like a business."
+ * Landlords are looking for control, transparency, and reclaimed time.
+ * This landing page targets the pain points of manual management.
  */
-const AnimatedCounter = ({ end, duration = 2000, prefix = '', suffix = '' }: { end: number, duration?: number, prefix?: string, suffix?: string }) => {
-  const [count, setCount] = useState(0);
 
-  useEffect(() => {
-    let startTimestamp: number | null = null;
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      // Easing function for smoother slowdown at the end (easeOutQuad)
-      const easeProgress = progress * (2 - progress);
-      setCount(Math.floor(easeProgress * end));
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      }
-    };
-    window.requestAnimationFrame(step);
-  }, [end, duration]);
+// --- Components ---
 
-  return <span>{prefix}{count.toLocaleString()}{suffix}</span>;
-};
 /**
- * Hero Section Component.
- * WHAT IT DOES: The main introductory banner with the primary value proposition and call-to-action buttons.
+ * Product Hero Mockup
+ * WHY: High-end SaaS products show the "Inside" to build trust.
+ * This is a styled HTML representation of the rent ledger dashboard.
  */
-const Hero = () => {
-  const navigate = useNavigate();
-  const { rooms, tenants, loading, formattedRooms } = usePlatformStats();
+const ProductHero = () => (
+  <div className="relative mt-20 max-w-5xl mx-auto p-4 bg-slate-900 rounded-[2.5rem] shadow-2xl shadow-emerald-500/10 border border-slate-800 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-300">
+    <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/20 rounded-full blur-3xl" />
+    <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl" />
+    
+    {/* Browser Header */}
+    <div className="flex items-center gap-2 mb-4 px-4 py-2 border-b border-slate-800">
+      <div className="flex gap-1.5">
+        <div className="w-3 h-3 rounded-full bg-rose-500/20" />
+        <div className="w-3 h-3 rounded-full bg-amber-500/20" />
+        <div className="w-3 h-3 rounded-full bg-emerald-500/20" />
+      </div>
+      <div className="mx-auto bg-slate-800/50 rounded-lg px-4 py-1 text-[10px] text-slate-500 font-mono">
+        rehwas.in/dashboard/ledger
+      </div>
+    </div>
 
-  return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-surface to-emerald-100/50 py-20 lg:py-32">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-        <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-dark tracking-tight max-w-4xl mx-auto leading-tight">
-          Find your perfect room in India — <span className="text-brand">no broker, no hassle.</span>
-        </h1>
-        <p className="mt-6 text-xl text-slate-600 max-w-2xl mx-auto font-medium">
-          REHWAS connects tenants with verified landlords across Bengaluru, Pune & Mumbai. Rent smarter. Manage better.
-        </p>
-        
-        <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
-          <button 
-            onClick={() => navigate('/discover')}
-            className="w-full sm:w-auto px-10 py-5 min-h-[44px] bg-brand text-white text-lg font-bold rounded-2xl shadow-xl hover:shadow-2xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 active:scale-95"
-          >
-            Browse Rooms <ArrowRight className="w-5 h-5" />
-          </button>
-          <button 
-            onClick={() => navigate('/add-room')}
-            className="w-full sm:w-auto px-10 py-5 min-h-[44px] bg-white text-dark text-lg font-bold rounded-2xl shadow border border-slate-200 hover:border-brand hover:text-brand transition-all flex items-center justify-center gap-2 active:scale-95"
-          >
-            List My Property <ArrowRight className="w-5 h-5" />
-          </button>
+    {/* Mock Dashboard UI */}
+    <div className="p-4 grid grid-cols-12 gap-4">
+      {/* Sidebar Mock */}
+      <div className="col-span-3 space-y-3 opacity-40 hidden md:block">
+        <div className="h-4 bg-slate-800 rounded w-full" />
+        <div className="h-4 bg-slate-800 rounded w-3/4" />
+        <div className="h-4 bg-emerald-500/20 rounded w-full border border-emerald-500/30" />
+        <div className="h-4 bg-slate-800 rounded w-2/3" />
+        <div className="h-24 bg-slate-800/50 rounded-xl mt-10" />
+      </div>
+
+      {/* Main Content Mock */}
+      <div className="col-span-12 md:col-span-9 space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="h-8 bg-slate-700 rounded-lg w-48" />
+          <div className="flex gap-2">
+            <div className="h-8 bg-emerald-500 rounded-lg w-24" />
+            <div className="h-8 bg-slate-800 rounded-lg w-8" />
+          </div>
         </div>
 
-        {/* Stats Section */}
-        <div className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto bg-white/60 backdrop-blur-xl border border-white/40 p-10 rounded-[2.5rem] shadow-sm">
-          <div className="flex flex-col items-center">
-            {loading ? (
-              <div className="h-12 w-24 bg-slate-200 animate-pulse rounded-xl mb-2"></div>
-            ) : rooms < 10 ? (
-              <Link to="/add-room" className="text-sm font-black text-brand text-center hover:underline h-12 flex items-center">
-                {formattedRooms}
-              </Link>
-            ) : (
-              <div className="text-5xl font-black text-brand tracking-tighter">
-                <AnimatedCounter end={rooms >= 100 ? Math.floor(rooms/10)*10 : rooms} suffix={rooms >= 100 ? "+" : ""} />
-              </div>
-            )}
-            {!(rooms < 10 && !loading) && <div className="text-xs font-black text-slate-400 mt-2 uppercase tracking-widest">Rooms Live</div>}
-          </div>
-          
-          <div className="flex flex-col items-center md:border-x border-slate-200/60">
-            {loading ? (
-              <div className="h-12 w-24 bg-slate-200 animate-pulse rounded-xl mb-2"></div>
-            ) : (
-              <div className="text-5xl font-black text-brand tracking-tighter">
-                <AnimatedCounter end={tenants} suffix="+" />
-              </div>
-            )}
-            <div className="text-xs font-black text-slate-400 mt-2 uppercase tracking-widest">Happy Tenants</div>
-          </div>
+        {/* Ledger Matrix */}
+        <div className="bg-slate-800/30 border border-slate-700 rounded-2xl overflow-hidden">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-slate-700">
+                <th className="p-4 text-[10px] font-black text-slate-500 uppercase">Tenant</th>
+                <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">JAN</th>
+                <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">FEB</th>
+                <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">MAR</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-400 font-bold text-xs">
+              {[
+                { name: 'Aditya K.', status: ['emerald', 'emerald', 'emerald'] },
+                { name: 'Sonal M.', status: ['emerald', 'emerald', 'amber'] },
+                { name: 'Rahul V.', status: ['emerald', 'rose', 'rose'] },
+                { name: 'Megha S.', status: ['emerald', 'emerald', 'emerald'] }
+              ].map((row, i) => (
+                <tr key={i} className="border-b border-slate-700/50">
+                  <td className="p-4 text-white">{row.name}</td>
+                  {row.status.map((st, j) => (
+                    <td key={j} className="p-4">
+                      <div className={`h-6 w-full rounded-md flex items-center justify-center ${
+                        st === 'emerald' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30' :
+                        st === 'amber' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' :
+                        'bg-rose-500/20 text-rose-500 border border-rose-500/30'
+                      }`}>
+                        {st === 'emerald' ? 'PAID' : st === 'amber' ? 'DUE' : 'MISS'}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-          <div className="flex flex-col items-center">
-            <div className="text-5xl font-black text-brand tracking-tighter">₹0</div>
-            <div className="text-xs font-black text-slate-400 mt-2 uppercase tracking-widest">Broker Fee</div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="h-20 bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-2">
+            <div className="h-2 bg-slate-600 rounded w-1/2" />
+            <div className="h-6 bg-emerald-500/20 rounded w-3/4" />
+          </div>
+          <div className="h-20 bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-2">
+            <div className="h-2 bg-slate-600 rounded w-1/2" />
+            <div className="h-6 bg-amber-500/20 rounded w-3/4" />
+          </div>
+          <div className="h-20 bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-2">
+            <div className="h-2 bg-slate-600 rounded w-1/2" />
+            <div className="h-6 bg-rose-500/20 rounded w-3/4" />
           </div>
         </div>
       </div>
-    </section>
-  );
-};
+    </div>
+
+    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-white text-dark px-6 py-2 rounded-full shadow-xl font-black text-xs uppercase tracking-widest border border-slate-100 z-20">
+      The landlord dashboard that actually makes sense
+    </div>
+  </div>
+);
 
 /**
- * How It Works Component.
+ * Feature Card Component
  */
-const HowItWorks = () => {
-  return (
-    <section id="how-it-works" className="py-24 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Tenants Section */}
-        <div className="mb-24">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-black text-dark tracking-tight">How It Works <span className="text-brand">For Tenants</span></h2>
-            <p className="mt-4 text-lg text-slate-500 font-medium">Find your next home in three simple steps.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            {[
-              { icon: Search, title: "1. Search on the Map", desc: "Filter by city, rent, and type. See real prices by area instead of endless lists." },
-              { icon: MessageSquare, title: "2. Chat with Landlord", desc: "Connect directly in-app. No phone number shared until you're completely ready." },
-              { icon: HomeIcon, title: "3. Move In", desc: "Enjoy verified listings, receive digital rent receipts, and experience zero hassle." }
-            ].map((step, i) => (
-              <div key={i} className="group bg-surface p-10 rounded-[2.5rem] text-center hover:-translate-y-2 transition-all border border-slate-50 hover:shadow-xl shadow-brand/5">
-                <div className="w-20 h-20 bg-emerald-100/50 text-brand rounded-[2rem] flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform">
-                  <step.icon className="w-10 h-10" />
-                </div>
-                <h3 className="text-2xl font-black text-dark mb-4">{step.title}</h3>
-                <p className="text-slate-600 leading-relaxed font-medium">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+const FeatureCard = ({ icon: Icon, title, desc, color }: { icon: any, title: string, desc: string, color: string }) => (
+  <div className="group p-8 rounded-[2.5rem] bg-white border border-slate-100 hover:border-emerald-100 transition-all hover:shadow-2xl hover:shadow-emerald-500/5">
+    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 duration-300 ${color}`}>
+      <Icon className="w-7 h-7" />
+    </div>
+    <h3 className="text-xl font-black text-dark mb-3 tracking-tight">{title}</h3>
+    <p className="text-slate-500 font-medium leading-relaxed">{desc}</p>
+  </div>
+);
 
-        {/* Landlords Section */}
-        <div id="for-landlords">
-          <div className="text-center mb-16 pt-10">
-            <h2 className="text-4xl font-black text-dark tracking-tight">How It Works <span className="text-indigo-600">For Landlords</span></h2>
-            <p className="mt-4 text-lg text-slate-500 font-medium">Manage your properties effortlessly.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            {[
-              { icon: Camera, title: "1. List in 5 minutes", desc: "Add photos, set rent, and drop a pin on the map. Your property goes live instantly.", color: "indigo" },
-              { icon: Users, title: "2. Find Tenants", desc: "Receive visit requests from interested seekers and securely chat directly with them.", color: "indigo" },
-              { icon: FileText, title: "3. Manage Everything", desc: "A KhataBook-style rent ledger, automated reminders, and digital receipts.", color: "indigo" }
-            ].map((step, i) => (
-              <div key={i} className="group bg-indigo-50/30 p-10 rounded-[2.5rem] text-center hover:-translate-y-2 transition-all border border-indigo-100/50 hover:shadow-xl shadow-indigo-500/5">
-                <div className="w-20 h-20 bg-indigo-100 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform">
-                  <step.icon className="w-10 h-10" />
-                </div>
-                <h3 className="text-2xl font-black text-dark mb-4">{step.title}</h3>
-                <p className="text-slate-600 leading-relaxed font-medium">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
+/**
+ * Testimonial Card
+ */
+const Testimonial = ({ name, location, roles, text, initial }: { name: string, location: string, roles: string, text: string, initial: string }) => (
+  <div className="p-8 rounded-[2.5rem] bg-slate-50 border border-slate-100 relative">
+    <div className="absolute top-8 right-8 text-emerald-500/20 font-serif text-6xl">"</div>
+    <div className="flex items-center gap-4 mb-6">
+      <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-emerald-600 font-black shadow-sm">
+        {initial}
       </div>
-    </section>
-  );
-};
-
-/**
- * Feature Highlights Component.
- */
-const FeatureHighlights = () => {
-  return (
-    <section className="py-32 bg-surface border-y border-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-4xl font-black text-dark mb-20 tracking-tight">Why choose REHWAS?</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div className="flex flex-col items-center max-w-sm mx-auto group">
-            <div className="w-24 h-24 bg-white shadow-lg rounded-[2.5rem] rotate-6 flex items-center justify-center mb-8 border border-white group-hover:rotate-0 transition-all">
-              <div className="w-full h-full -rotate-6 group-hover:rotate-0 flex items-center justify-center bg-blue-50 text-blue-500 rounded-[2.5rem] transition-all">
-                <Map className="w-12 h-12" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-black text-dark mb-4">Smart Map Discovery</h3>
-            <p className="text-slate-500 leading-relaxed font-medium">Browse real-time room prices by locality visually. No more scrolling through endless lists.</p>
-          </div>
-          <div className="flex flex-col items-center max-w-sm mx-auto group">
-            <div className="w-24 h-24 bg-white shadow-lg rounded-[2.5rem] -rotate-6 flex items-center justify-center mb-8 border border-white group-hover:rotate-0 transition-all">
-              <div className="w-full h-full rotate-6 group-hover:rotate-0 flex items-center justify-center bg-amber-50 text-amber-500 rounded-[2.5rem] transition-all">
-                <BookOpen className="w-12 h-12" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-black text-dark mb-4">Rent Ledger</h3>
-            <p className="text-slate-500 leading-relaxed font-medium">Easily track monthly rent, electricity bills, and arrears for every single tenant digitally.</p>
-          </div>
-          <div className="flex flex-col items-center max-w-sm mx-auto group">
-            <div className="w-24 h-24 bg-white shadow-lg rounded-[2.5rem] rotate-3 flex items-center justify-center mb-8 border border-white group-hover:rotate-0 transition-all">
-              <div className="w-full h-full -rotate-3 group-hover:rotate-0 flex items-center justify-center bg-brand/10 text-brand rounded-[2.5rem] transition-all">
-                <ShieldCheck className="w-12 h-12" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-black text-dark mb-4">Verified Listings</h3>
-            <p className="text-slate-500 leading-relaxed font-medium">KYC-linked landlords and community reviews ensure you never face renting scams again.</p>
-          </div>
-        </div>
+      <div>
+        <p className="font-black text-dark tracking-tight">{name}</p>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{location} · {roles}</p>
       </div>
-    </section>
-  );
-};
+    </div>
+    <p className="text-slate-600 font-medium leading-relaxed italic">"{text}"</p>
+  </div>
+);
 
 /**
- * Cities Section Component.
+ * Pricing Preview Component
  */
-const Cities = () => {
-  const navigate = useNavigate();
-  const { cityCounts, loading } = usePlatformStats();
-  const [waitlistCity, setWaitlistCity] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const cities = [
-    { name: 'Bengaluru', id: 'bengaluru', img: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?auto=format&fit=crop&q=80&w=600&h=400' },
-    { name: 'Pune', id: 'pune', img: 'https://images.unsplash.com/photo-1572913017567-02f06e300931?auto=format&fit=crop&q=80&w=600&h=400' },
-    { name: 'Mumbai', id: 'mumbai', img: 'https://images.unsplash.com/photo-1522441815192-d9f04eb0615c?auto=format&fit=crop&q=80&w=600&h=400' }
-  ];
-
-  const handleWaitlistSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !waitlistCity) return;
-
-    setIsSubmitting(true);
-    const { error } = await supabase
-      .from('waitlist_signups')
-      .insert([{ email, city: waitlistCity }]);
-
-    setIsSubmitting(false);
-    if (error) {
-      toast.error('Failed to join waitlist. Try again later.');
-    } else {
-      toast.success(`You're on the list! We'll notify you when rooms go live in ${waitlistCity}.`);
-      setWaitlistCity(null);
-      setEmail('');
-    }
-  };
-
-  return (
-    <section id="cities" className="py-32 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-4xl font-black text-dark mb-16 border-l-8 border-brand pl-6 tracking-tight">Available in</h2>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
-          {cities.map((city) => {
-            const count = cityCounts[city.name] || 0;
-            const isLive = count > 0;
-
-            return (
-              <div 
-                key={city.name}
-                onClick={() => isLive ? navigate(`/discover?city=${city.name.toLowerCase()}`) : setWaitlistCity(city.name)}
-                className="group relative h-80 rounded-[2.5rem] overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-500"
-              >
-                <img 
-                  src={city.img} 
-                  alt={city.name} 
-                  className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${!isLive ? 'grayscale' : ''}`}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-dark/90 via-dark/20 to-transparent"></div>
-                <div className="absolute bottom-10 left-8 right-8">
-                  <h3 className="text-3xl font-black text-white mb-2 flex items-center gap-3">
-                    <MapPin className="w-7 h-7 text-brand" /> {city.name}
-                  </h3>
-                  {loading ? (
-                    <div className="h-4 w-24 bg-white/20 animate-pulse rounded"></div>
-                  ) : isLive ? (
-                    <p className="text-emerald-100 font-bold uppercase tracking-widest text-xs">{count} active listings</p>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      <p className="text-amber-300 font-bold uppercase tracking-widest text-xs">Launching soon 🚀</p>
-                      <button className="text-[10px] bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 py-1 rounded-full w-fit backdrop-blur-sm transition-all">
-                        Join Waitlist
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+const PricingPreview = () => (
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto px-4">
+    {[
+      { name: 'Starter', price: '0', desc: 'Up to 3 rooms', cta: 'Get started free', feat: ['Rent ledger', 'WhatsApp reminders'] },
+      { name: 'Pro', price: '499', desc: 'Up to 15 rooms', cta: 'Start 14-day trial', feat: ['P&L Dashboard', 'Electricity Splitter'], popular: true },
+      { name: 'Business', price: '1,499', desc: 'Unlimited rooms', cta: 'Start 14-day trial', feat: ['Rent Agreements', 'Team seats'] }
+    ].map((plan, i) => (
+      <div key={i} className={`p-8 rounded-[2.5rem] bg-white border flex flex-col transition-all hover:-translate-y-1 ${
+        plan.popular ? 'border-emerald-500 shadow-xl shadow-emerald-500/10 scale-105' : 'border-slate-100'
+      }`}>
+        {plan.popular && (
+          <div className="bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase self-center -mt-11 mb-7 tracking-widest">Most Popular</div>
+        )}
+        <h4 className="text-lg font-black text-dark mb-1">{plan.name}</h4>
+        <p className="text-xs text-slate-400 font-bold mb-6">{plan.desc}</p>
+        <div className="flex items-baseline gap-1 mb-8">
+          <span className="text-sm font-black">₹</span>
+          <span className="text-4xl font-black">{plan.price}</span>
+          <span className="text-slate-400 text-xs font-bold">/mo</span>
         </div>
+        <div className="space-y-3 mb-10 flex-1">
+          {plan.feat.map((f, j) => (
+            <div key={j} className="flex items-center gap-2 text-xs font-bold text-slate-600">
+              <Check size={14} className="text-emerald-500" strokeWidth={4} /> {f}
+            </div>
+          ))}
+        </div>
+        <Link 
+          to="/login" 
+          className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest text-center transition-all ${
+            plan.popular ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-slate-900 text-white'
+          }`}
+        >
+          {plan.cta}
+        </Link>
       </div>
+    ))}
+  </div>
+);
 
-      {/* Waitlist Modal */}
-      {waitlistCity && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-dark/60 backdrop-blur-md" onClick={() => setWaitlistCity(null)}></div>
-          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-10 relative z-10 animate-in zoom-in-95 duration-300 shadow-2xl">
-            <h3 className="text-3xl font-black text-dark mb-4">Launching soon in {waitlistCity} 🏠</h3>
-            <p className="text-slate-500 font-medium mb-8">We're currently onboarding verified landlords in {waitlistCity}. Drop your email to get notified the second we go live.</p>
-            
-            <form onSubmit={handleWaitlistSubmit} className="flex flex-col gap-4">
-              <input 
-                type="email" 
-                required
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold text-dark"
-              />
-              <button 
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-4 bg-brand text-white font-black rounded-2xl shadow-xl shadow-brand/20 hover:bg-emerald-600 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-              >
-                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Notify Me →'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-};
+// --- Main Page ---
 
-/**
- * Footer Component.
- */
-const Footer = () => {
-  const navigate = useNavigate();
-
-  return (
-    <footer className="bg-dark text-slate-400 py-20 border-t border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-          <div className="col-span-1 md:col-span-2 space-y-6">
-            <div className="flex items-center gap-2 text-white cursor-pointer" onClick={() => navigate('/')}>
-              <Building2 className="w-8 h-8 text-brand" />
-              <span className="text-2xl font-black tracking-tight">REHWAS</span>
-            </div>
-            <p className="text-lg max-w-sm font-medium leading-relaxed">
-              Making India's rental market transparent, efficient, and broker-free for both tenants and landlords.
-            </p>
-          </div>
-          
-          <div>
-            <h4 className="text-white font-black uppercase tracking-widest text-xs mb-6">Discovery</h4>
-            <div className="flex flex-col gap-4 text-sm font-bold">
-              <Link to="/discover" className="hover:text-brand transition-colors">Find a Room</Link>
-              <Link to="/add-room" className="hover:text-brand transition-colors">List Property</Link>
-              <a href="#cities" className="hover:text-brand transition-colors">Cities</a>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-white font-black uppercase tracking-widest text-xs mb-6">Company</h4>
-            <div className="flex flex-col gap-4 text-sm font-bold">
-              <a href="#" className="hover:text-brand transition-colors">Help Center</a>
-              <a href="#" className="hover:text-brand transition-colors">Privacy Policy</a>
-              <a href="#" className="hover:text-brand transition-colors">Terms of Service</a>
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-10 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-sm font-bold">
-            Built with ❤️ for Bharat 🇮🇳
-          </div>
-          <div className="text-sm font-medium opacity-50">
-            © {new Date().getFullYear()} REHWAS Technologies. All rights reserved.
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-};
-/**
- * The Main Home Page Component.
- * WHAT IT DOES: Assembles all the individual sections into the final public landing page.
- * NOTE ON RESPONSIVENESS: Uses `md:` for desktop-first styles, enforcing vertical stacking and `w-full` utilities natively on mobile while collapsing the `Navbar` to a hamburger menu. Tap targets are rigorously set using `min-h-[44px]`.
- * ANALOGY: The master blueprint that puts all the building blocks (rooms, walls, doors) together into a finished house.
- */
 export default function Home() {
+  const navigate = useNavigate();
+
   return (
-    <div className="min-h-screen bg-surface font-sans selection:bg-brand/20 select-none">
-      <main>
-        <Hero />
-        <HowItWorks />
-        <FeatureHighlights />
-        <Cities />
-      </main>
-      <Footer />
+    <div className="min-h-screen bg-white font-sans selection:bg-emerald-100 select-none overflow-x-hidden">
+      
+      {/* Section 0: Hero 
+          STRATEGY: Emotional Hook. Shift from "Find a Room" to "Control your business."
+      */}
+      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-40 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 text-center relative z-10">
+          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+            <Zap size={14} fill="currentColor" />
+            <span className="text-xs font-black uppercase tracking-widest">Built for Indian Landlords</span>
+          </div>
+          
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-dark tracking-tighter leading-[0.9] mb-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            Run your rental properties <br className="hidden md:block" /> 
+            <span className="text-emerald-600">like a business.</span>
+          </h1>
+          
+          <p className="mt-6 text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed animate-in fade-in slide-in-from-bottom-10 duration-1000">
+            REHWAS is property management software for Indian landlords — 
+            rent tracking, tenant management, utility billing, and verified tenant discovery 
+            in one place.
+          </p>
+
+          <div className="mt-12 flex flex-col sm:flex-row justify-center gap-6 animate-in fade-in zoom-in-95 duration-1000 delay-500">
+            <button 
+              onClick={() => navigate('/login')}
+              className="px-10 py-5 bg-emerald-600 text-white text-lg font-black rounded-2xl shadow-2xl shadow-emerald-600/30 hover:bg-emerald-700 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3"
+            >
+              Start free — no credit card <ArrowRight className="w-5 h-5" />
+            </button>
+            <a 
+              href="#product"
+              className="px-10 py-5 bg-white text-dark text-lg font-black rounded-2xl border-2 border-slate-100 hover:border-emerald-200 hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 active:scale-95"
+            >
+              See how it works
+            </a>
+          </div>
+
+          <div className="mt-12 flex flex-wrap justify-center items-center gap-8 text-[10px] font-black text-slate-400 uppercase tracking-widest animate-in fade-in duration-1000 delay-700">
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+              <Check size={12} className="text-emerald-500" strokeWidth={4} /> Free forever for up to 3 rooms
+            </div>
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+              <Users size={12} className="text-emerald-500" /> Trusted by 2,400+ landlords
+            </div>
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+              🇮🇳 Made in India
+            </div>
+          </div>
+        </div>
+
+        <div id="product" className="px-6">
+          <ProductHero />
+        </div>
+      </section>
+
+      {/* Section 1: Core Software Features 
+          STRATEGY: Direct Value Prop. Solve the primary pain: "Where is my money?"
+      */}
+      <section className="py-32 lg:py-48 px-6 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-24 max-w-3xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-black text-dark tracking-tight mb-6">Everything your properties need</h2>
+            <p className="text-lg text-slate-500 font-medium">Stop using notebooks and WhatsApp messages. Use the first property engine built for the Indian rental market.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <FeatureCard 
+              icon={BookOpen}
+              title="Smart Rent Ledger"
+              desc="A Matrix-view of your portfolio. Track who paid, who's due, and who's missing at a glance. No math required."
+              color="bg-emerald-50 text-emerald-600"
+            />
+            <FeatureCard 
+              icon={Zap}
+              title="Urja Bill Splitter"
+              desc="Divide shared electricity and water bills among tenants with one click. Send itemized bills to WhatsApp instantly."
+              color="bg-blue-50 text-blue-600"
+            />
+            <FeatureCard 
+              icon={FileText}
+              title="Digital Records"
+              desc="Store tenant KYC, dossiers, and receipts in the cloud. Never lose a rent agreement again."
+              color="bg-amber-50 text-amber-600"
+            />
+            <FeatureCard 
+              icon={Calendar}
+              title="Lease Calendar"
+              desc="Automatic alerts for renewals and dues. Know exactly when a lease is ending before it happens."
+              color="bg-purple-50 text-purple-600"
+            />
+            <FeatureCard 
+              icon={BarChart2}
+              title="P&L Reports"
+              desc="Detailed income vs expense reports. Know your actual property yield. Ready to export for your CA."
+              color="bg-rose-50 text-rose-600"
+            />
+            <FeatureCard 
+              icon={Smartphone}
+              title="WhatsApp Reminders"
+              desc="Professional, polite payment reminders sent via WhatsApp. Replaces awkward face-to-face collections."
+              color="bg-emerald-50 text-emerald-600"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Section 2: Discovery Feature 
+          STRATEGY: The "Marketing Bonus". Position the marketplace as a tool for landlords.
+      */}
+      <section className="py-32 lg:py-48 px-6 bg-slate-900 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-emerald-600/10 rounded-full blur-[120px] -mr-[400px] -mt-[400px]" />
+        
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-20 relative z-10">
+          <div className="flex-1 space-y-10">
+            <div className="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-4 py-2 rounded-full border border-emerald-500/20">
+              <Map size={14} />
+              <span className="text-xs font-black uppercase tracking-widest">Bonus Feature: Discovery</span>
+            </div>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.9]">Find tenants, <br /> <span className="text-emerald-500">not brokers.</span></h2>
+            <p className="text-xl text-slate-400 font-medium leading-relaxed">
+              When you need to fill a vacancy, REHWAS puts your room on a live map that tenants are actively browsing. 
+              No listing fees, no broker commissions, and 100% verified leads.
+            </p>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 text-emerald-400 font-black text-sm">
+                <Check size={18} strokeWidth={4} /> ZERO COMMISSION
+              </div>
+              <div className="flex items-center gap-4 text-emerald-400 font-black text-sm">
+                <Check size={18} strokeWidth={4} /> LIVE MAP LISTINGS
+              </div>
+              <div className="flex items-center gap-4 text-emerald-400 font-black text-sm">
+                <Check size={18} strokeWidth={4} /> VERIFIED SEEKERS ONLY
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 w-full">
+            {/* Map Preview Mockup */}
+            <div className="aspect-square bg-slate-800 rounded-[3rem] border-8 border-slate-800 shadow-2xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/77.5946,12.9716,12,0/600x600?access_token=pk.eyJ1IjoicmVod2FzIiwiYSI6ImNscnd...') ] opacity-50 grayscale" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center animate-ping opacity-20" />
+                <div className="w-4 h-4 bg-emerald-500 rounded-full border-4 border-white shadow-lg absolute" />
+                
+                <div className="absolute top-1/3 left-1/4 translate-y-10">
+                   <div className="bg-white text-dark px-3 py-1.5 rounded-full font-black text-xs shadow-xl animate-bounce">₹12,500</div>
+                </div>
+                <div className="absolute top-1/2 right-1/4">
+                   <div className="bg-white text-dark px-3 py-1.5 rounded-full font-black text-xs shadow-xl">₹18,000</div>
+                </div>
+              </div>
+              <div className="absolute bottom-10 left-10 right-10 bg-slate-900/90 backdrop-blur-md p-6 rounded-2xl border border-slate-700 transform transition-transform group-hover:translate-y-2">
+                <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-2">Live Demand</p>
+                <p className="text-sm font-bold text-white">"14 tenants browsing in Indiranagar right now"</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 3: Social Proof 
+          STRATEGY: Validation. Show that "Real people in India use this."
+      */}
+      <section className="py-32 lg:py-48 px-6 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-24 max-w-3xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-black text-dark tracking-tight mb-6">Built for the way India rents</h2>
+            <p className="text-lg text-slate-500 font-medium">Join 2,400+ landlords across Bengaluru, Pune, and Mumbai who reclaimed their weekends with REHWAS.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Testimonial 
+              name="Ramesh S."
+              location="Bengaluru"
+              roles="8 rooms"
+              initial="RS"
+              text="I used to track rent in a notebook. REHWAS replaced my entire system. I see who hasn't paid in 2 seconds."
+            />
+            <Testimonial 
+              name="Priya M."
+              location="Pune"
+              roles="3 rooms"
+              initial="PM"
+              text="The WhatsApp reminder button saved me 3 awkward conversations this month. Professional and effective."
+            />
+            <Testimonial 
+              name="Sunita A."
+              location="Mumbai"
+              roles="15 PG beds"
+              initial="SA"
+              text="The electricity splitter alone is worth the subscription. Used to take me 30 minutes every month manually."
+            />
+          </div>
+
+          {/* Section 5 Highlights: India Specifics */}
+          <div className="mt-32 grid grid-cols-2 md:grid-cols-5 gap-10 opacity-60">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <span className="text-3xl font-black">₹</span>
+              <p className="text-[10px] font-black uppercase tracking-widest">Rupee Native</p>
+            </div>
+            <div className="flex flex-col items-center gap-3 text-center">
+              <MessageSquare size={30} className="text-emerald-500" />
+              <p className="text-[10px] font-black uppercase tracking-widest">WhatsApp-First</p>
+            </div>
+            <div className="flex flex-col items-center gap-3 text-center">
+              <Zap size={30} className="text-amber-500" />
+              <p className="text-[10px] font-black uppercase tracking-widest">UPI Integrated</p>
+            </div>
+            <div className="flex flex-col items-center gap-3 text-center">
+              <Shield size={30} className="text-blue-500" />
+              <p className="text-[10px] font-black uppercase tracking-widest">Aadhaar Ready</p>
+            </div>
+            <div className="flex flex-col items-center gap-3 text-center">
+              <Smartphone size={30} className="text-slate-900" />
+              <p className="text-[10px] font-black uppercase tracking-widest">Android Optimized</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 4: Pricing Preview 
+          STRATEGY: Transparency. SaaS buyers want to see the price before they sign up.
+      */}
+      <section className="py-32 lg:py-48 px-6 bg-slate-50 border-y border-slate-100">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-24">
+            <h2 className="text-4xl md:text-5xl font-black text-dark tracking-tight mb-6">Simple, transparent pricing</h2>
+            <Link to="/pricing" className="text-emerald-600 font-black flex items-center justify-center gap-2 hover:underline">
+              View full pricing details <ArrowRight size={18} />
+            </Link>
+          </div>
+
+          <PricingPreview />
+        </div>
+      </section>
+
+      {/* NEW BOTTOM CTA BANNER 
+          STRATEGY: The "Closer". Final push to get the conversion.
+      */}
+      <section className="py-32 px-6">
+        <div className="max-w-7xl mx-auto bg-emerald-600 rounded-[3rem] p-12 md:p-24 text-center text-white relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-48 -mt-48 transition-transform group-hover:scale-110 duration-1000" />
+          
+          <div className="relative z-10 max-w-4xl mx-auto space-y-10">
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[1]">Ready to manage your <br className="hidden md:block" /> properties the smart way?</h2>
+            <p className="text-xl text-emerald-50 font-medium">Join 2,400+ landlords already using REHWAS to save 10+ hours of management every month.</p>
+            
+            <div className="flex flex-col items-center gap-6">
+              <button 
+                onClick={() => navigate('/login')}
+                className="px-12 py-6 bg-white text-emerald-700 text-xl font-black rounded-2xl shadow-2xl hover:shadow-white/20 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest"
+              >
+                Start free today <ArrowRight className="w-6 h-6" />
+              </button>
+              <p className="text-sm font-black text-emerald-200 uppercase tracking-widest">
+                No credit card required · Cancel anytime · Free for up to 3 rooms
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer 
+          STRATEGY: Authority and Compliance.
+      */}
+      <footer className="bg-white border-t border-slate-100 py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
+            <div className="col-span-1 md:col-span-1 space-y-6">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-8 h-8 text-emerald-600" />
+                <span className="text-2xl font-black text-dark tracking-tighter uppercase">REHWAS</span>
+              </div>
+              <p className="text-slate-500 font-medium leading-relaxed">
+                Property management software <br /> 
+                for the way India rents.
+              </p>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                © 2026 REHWAS Technologies Pvt. Ltd. <br /> Bengaluru, India
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 col-span-1 md:col-span-3 gap-12">
+              <div className="space-y-6">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Product</h4>
+                <div className="flex flex-col gap-4 text-sm font-bold text-dark">
+                  <Link to="/pricing" className="hover:text-emerald-600 transition-colors">Pricing</Link>
+                  <Link to="/features" className="hover:text-emerald-600 transition-colors">Features</Link>
+                  <Link to="/api" className="hover:text-emerald-600 transition-colors">API</Link>
+                </div>
+              </div>
+              <div className="space-y-6">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Resources</h4>
+                <div className="flex flex-col gap-4 text-sm font-bold text-dark">
+                  <Link to="/blog" className="hover:text-emerald-600 transition-colors">Blog</Link>
+                  <Link to="/help" className="hover:text-emerald-600 transition-colors">Help Center</Link>
+                  <Link to="/security" className="hover:text-emerald-600 transition-colors">Security</Link>
+                </div>
+              </div>
+              <div className="space-y-6">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Legal</h4>
+                <div className="flex flex-col gap-4 text-sm font-bold text-dark">
+                  <Link to="/privacy" className="hover:text-emerald-600 transition-colors">Privacy Policy</Link>
+                  <Link to="/terms" className="hover:text-emerald-600 transition-colors">Terms of Service</Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-10 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="text-xs font-black text-slate-400 tracking-widest flex items-center gap-4">
+               <Star size={14} className="text-amber-400" /> Rated 4.9/5 by Indian Landlords
+            </div>
+            <div className="text-xs font-black text-slate-900 tracking-widest">
+               BUILT WITH ❤️ FOR BHARAT 🇮🇳
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
-

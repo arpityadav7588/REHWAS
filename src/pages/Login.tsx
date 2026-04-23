@@ -10,16 +10,29 @@ import toast from 'react-hot-toast';
  * ANALOGY: A grand entrance with two distinct paths—one leads to the showroom (Tenant) and the other to the management office (Landlord).
  */
 export default function Login() {
-  const [step, setStep] = useState<0 | 1 | 2 | 3>(0); // 0: Role Selection, 1: Email, 2: OTP, 3: Onboarding
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0); // 0: Role Selection, 1: Contact, 2: OTP, 3: Onboarding
+  const [method, setMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<'tenant' | 'landlord'>('tenant');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   
-  const { signInWithEmail, verifyOtp, updateProfile } = useAuth();
+  const { user, profile, signInWithEmail, signInWithPhone, verifyOtp, updateProfile } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && profile?.full_name) {
+      if (profile.role === 'landlord') {
+        navigate('/dashboard');
+      } else {
+        navigate('/discover');
+      }
+    }
+  }, [user, profile, navigate]);
 
   // Animation effect on step change
   useEffect(() => {
@@ -41,21 +54,40 @@ export default function Login() {
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !email.includes('@')) {
-      toast.error('Please enter a valid email address');
-      return;
-    }
-    
-    setLoading(true);
-    const { error } = await signInWithEmail(email);
-    setLoading(false);
-    
-    if (error) {
-      toast.error(error.message);
+    if (method === 'email') {
+      if (!email || !email.includes('@')) {
+        toast.error('Please enter a valid email address');
+        return;
+      }
+      
+      setLoading(true);
+      const { error } = await signInWithEmail(email);
+      setLoading(false);
+      
+      if (error) {
+        toast.error(error.message);
+      } else {
+        setStep(2);
+        startCountdown();
+        toast.success('Verification code sent to your email');
+      }
     } else {
-      setStep(2);
-      startCountdown();
-      toast.success('Verification code sent to your email');
+      if (!phone || phone.length < 10) {
+        toast.error('Please enter a valid phone number');
+        return;
+      }
+      
+      setLoading(true);
+      const { error } = await signInWithPhone(phone.startsWith('+') ? phone : `+91${phone}`);
+      setLoading(false);
+      
+      if (error) {
+        toast.error(error.message);
+      } else {
+        setStep(2);
+        startCountdown();
+        toast.success('Verification code sent to your phone');
+      }
     }
   };
 
@@ -67,16 +99,17 @@ export default function Login() {
     }
     
     setLoading(true);
-    const { error, profile } = await verifyOtp(email, otp, 'email');
+    const { error, profile } = await verifyOtp(method === 'email' ? email : (phone.startsWith('+') ? phone : `+91${phone}`), otp, method === 'email' ? 'email' : 'sms');
     setLoading(false);
     
     if (error) {
       toast.error('Invalid code. Please try again.');
     } else {
       toast.success('Logged in successfully!');
-      if (profile && !profile.full_name) {
+      // If no profile exists yet (new user) or name is missing, go to onboarding
+      if (!profile || !profile.full_name) {
         setStep(3);
-      } else if (profile?.role === 'landlord') {
+      } else if (profile.role === 'landlord') {
         navigate('/dashboard');
       } else {
         navigate('/discover');
@@ -207,35 +240,68 @@ export default function Login() {
             </div>
           )}
 
-          {/* STEP 1: Email */}
+          {/* STEP 1: Contact Method */}
           {step === 1 && (
             <form onSubmit={handleSendOtp} className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-400">
               <div>
-                <h2 className="text-3xl font-black text-dark tracking-tighter">Your Email</h2>
-                <p className="text-slate-500 mt-2 font-medium">We'll send a secure login link to your inbox.</p>
+                <h2 className="text-3xl font-black text-dark tracking-tighter">Your Account</h2>
+                <p className="text-slate-500 mt-2 font-medium">Choose how you want to log in.</p>
+              </div>
+
+              {/* Method Toggle */}
+              <div className="flex p-1.5 bg-slate-100 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setMethod('email')}
+                  className={`flex-1 py-3 text-sm font-black uppercase tracking-wider rounded-xl transition-all ${method === 'email' ? 'bg-white text-brand shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMethod('phone')}
+                  className={`flex-1 py-3 text-sm font-black uppercase tracking-wider rounded-xl transition-all ${method === 'phone' ? 'bg-white text-brand shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Phone
+                </button>
               </div>
 
               <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Email Address</label>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
+                  {method === 'email' ? 'Email Address' : 'Phone Number'}
+                </label>
                 <div className="relative flex items-center">
                   <div className="absolute left-5 flex items-center text-slate-400 pointer-events-none">
-                    <Mail className="w-5 h-5" />
+                    {method === 'email' ? <Mail className="w-5 h-5" /> : <div className="font-black text-sm text-slate-400">+91</div>}
                   </div>
-                  <input
-                    type="email"
-                    required
-                    autoFocus
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-14 pr-6 py-5 bg-surface border-2 border-slate-50 rounded-[1.5rem] focus:ring-4 focus:ring-brand/5 focus:border-brand focus:bg-white outline-none transition-all text-dark font-black text-lg placeholder-slate-300"
-                    placeholder="name@example.com"
-                  />
+                  {method === 'email' ? (
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-14 pr-6 py-5 bg-surface border-2 border-slate-50 rounded-[1.5rem] focus:ring-4 focus:ring-brand/5 focus:border-brand focus:bg-white outline-none transition-all text-dark font-black text-lg placeholder-slate-300"
+                      placeholder="name@example.com"
+                    />
+                  ) : (
+                    <input
+                      type="tel"
+                      required
+                      autoFocus
+                      maxLength={10}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      className="w-full pl-16 pr-6 py-5 bg-surface border-2 border-slate-50 rounded-[1.5rem] focus:ring-4 focus:ring-brand/5 focus:border-brand focus:bg-white outline-none transition-all text-dark font-black text-lg placeholder-slate-300"
+                      placeholder="98765 43210"
+                    />
+                  )}
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || !email.includes('@')}
+                disabled={loading || (method === 'email' ? !email.includes('@') : phone.length < 10)}
                 className="w-full bg-brand text-white font-black py-5 px-6 rounded-[1.5rem] transition-all disabled:opacity-30 disabled:grayscale flex justify-center items-center gap-3 shadow-xl shadow-brand/20 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
               >
                 {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Send Login Code <ArrowRight className="w-5 h-5" /></>}
@@ -247,8 +313,8 @@ export default function Login() {
           {step === 2 && (
             <form onSubmit={handleVerifyOtp} className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-400">
               <div>
-                <h2 className="text-3xl font-black text-dark tracking-tighter">Check your Inbox</h2>
-                <p className="text-slate-500 mt-2 font-medium">We've sent a 6-digit code to {email}</p>
+                <h2 className="text-3xl font-black text-dark tracking-tighter">Check your {method === 'email' ? 'Inbox' : 'Phone'}</h2>
+                <p className="text-slate-500 mt-2 font-medium">We've sent a 6-digit code to {method === 'email' ? email : phone}</p>
               </div>
 
               <div>
@@ -280,7 +346,7 @@ export default function Login() {
                   disabled={countdown > 0 || loading}
                   className="text-sm font-black text-brand hover:text-emerald-700 disabled:text-slate-300 transition-colors uppercase tracking-widest"
                 >
-                  {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Email'}
+                  {countdown > 0 ? `Resend in ${countdown}s` : `Resend ${method === 'email' ? 'Email' : 'SMS'}`}
                 </button>
               </div>
             </form>

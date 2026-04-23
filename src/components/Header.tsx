@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Plus, Building2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationCenter } from './NotificationCenter';
@@ -14,6 +14,16 @@ export const Header = () => {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+  const { pathname } = useLocation();
+
+  const isLinkActive = (path: string) => pathname === path;
+
+  const navLinkClass = (path: string) => `
+    text-sm font-bold uppercase tracking-wider transition-all
+    ${isLinkActive(path) 
+      ? 'text-brand border-b-2 border-brand pb-1' 
+      : 'text-slate-600 hover:text-brand'}
+  `;
 
   return (
     <nav className="sticky top-0 z-[100] bg-white/80 backdrop-blur-md border-b border-slate-100">
@@ -29,10 +39,10 @@ export const Header = () => {
 
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center space-x-10">
-            <Link to="/discover" className="text-slate-600 hover:text-brand font-bold text-sm transition-colors uppercase tracking-wider">Discover</Link>
-            <Link to="/pricing" className="text-slate-600 hover:text-brand font-bold text-sm transition-colors uppercase tracking-wider">Pricing</Link>
+            <Link to="/discover" className={navLinkClass('/discover')}>Discover</Link>
+            <Link to="/pricing" className={navLinkClass('/pricing')}>Pricing</Link>
             {profile?.role === 'landlord' && (
-              <Link to="/dashboard" className="text-slate-600 hover:text-brand font-bold text-sm transition-colors uppercase tracking-wider">Management</Link>
+              <Link to="/dashboard" className={navLinkClass('/dashboard')}>Management</Link>
             )}
             <a href="/#how-it-works" className="text-slate-600 hover:text-brand font-bold text-sm transition-colors uppercase tracking-wider">How it works</a>
           </div>

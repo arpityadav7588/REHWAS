@@ -10,6 +10,9 @@ import {
   X, MapPin, Loader2, UploadCloud 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { FeatureGate } from '@/components/FeatureGate';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 // Fix for default Leaflet marker icon not showing in React Leaflet
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -54,8 +57,12 @@ const LocationMarker = ({ position, setPosition }: { position: L.LatLng, setPosi
  * ANALOGY: Filling out a detailed property listing form with a built-in map and photo album compiler.
  */
 export default function AddRoom() {
-  const { profile, user } = useAuth();
+  const { profile, user, plan } = useAuth();
   const navigate = useNavigate();
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
+  const roomLimit = plan === 'starter' ? 3 : plan === 'pro' ? 15 : Infinity;
+  const isOverLimit = (profile?.rooms_count || 0) >= roomLimit;
 
   // Protect route for Landlords only
   useEffect(() => {
@@ -331,6 +338,54 @@ export default function AddRoom() {
     );
   }
 
+  if (isOverLimit) {
+    return (
+      <div className="max-w-3xl mx-auto py-20 px-4">
+        <div className="bg-white rounded-[2.5rem] p-10 md:p-16 border border-slate-100 shadow-2xl text-center">
+          <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mx-auto mb-8 ring-8 ring-amber-50/50">
+            <ShieldAlert className="w-10 h-10" />
+          </div>
+          <h1 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">
+            You've reached your {roomLimit}-room limit
+          </h1>
+          <p className="text-slate-500 font-medium mb-10 max-w-md mx-auto">
+            The <span className="text-slate-900 font-bold uppercase tracking-wider">{plan}</span> plan supports up to {roomLimit} rooms. Upgrade to continue growing your portfolio.
+          </p>
+
+          <div className="grid grid-cols-3 gap-4 mb-10 max-w-lg mx-auto">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+              <div className="text-[10px] font-black text-slate-400 uppercase mb-1">Starter</div>
+              <div className="text-xl font-black">3 Rooms</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 ring-2 ring-emerald-500/20 scale-105">
+              <div className="text-[10px] font-black text-emerald-600 uppercase mb-1">Pro</div>
+              <div className="text-xl font-black">15 Rooms</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+              <div className="text-[10px] font-black text-slate-400 uppercase mb-1">Business</div>
+              <div className="text-xl font-black">∞ Rooms</div>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setIsUpgradeModalOpen(true)}
+            className="w-full max-w-sm py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all text-sm uppercase tracking-widest"
+          >
+            Upgrade for ₹499/mo to add more rooms →
+          </button>
+          
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="mt-6 text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+        <UpgradeModal isOpen={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} targetPlan="pro" />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6">
 
@@ -532,6 +587,48 @@ export default function AddRoom() {
                   <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all ${form.furnished ? 'left-7' : 'left-1'}`}></div>
                 </button>
               </div>
+
+              <FeatureGate 
+                feature="3d_preview" 
+                requiredPlan="pro"
+                fallback={
+                  <div className="flex items-center justify-between p-4 border border-amber-100 rounded-xl bg-amber-50/30 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600">
+                        <Sparkles size={20} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-900 flex items-center gap-2">
+                          AI 3D Room Preview 
+                          <span className="bg-amber-100 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">Pro</span>
+                        </div>
+                        <div className="text-xs text-slate-500">Enable virtual walkthroughs for this room</div>
+                      </div>
+                    </div>
+                    <div className="w-14 h-8 rounded-full bg-slate-200 relative p-1">
+                      <div className="w-6 h-6 bg-white rounded-full" />
+                    </div>
+                  </div>
+                }
+              >
+                <div className="flex items-center justify-between p-4 border border-emerald-100 rounded-xl bg-emerald-50/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
+                      <Sparkles size={20} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-900">AI 3D Room Preview</div>
+                      <div className="text-xs text-slate-500">Enable virtual walkthroughs for this room</div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => toast.success('AI 3D Preview enabled!')}
+                    className="w-14 h-8 rounded-full bg-emerald-500 relative p-1"
+                  >
+                    <div className="w-6 h-6 bg-white rounded-full absolute right-1" />
+                  </button>
+                </div>
+              </FeatureGate>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

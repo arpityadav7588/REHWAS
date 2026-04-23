@@ -14,7 +14,7 @@ import { format, parseISO, subMonths } from 'date-fns';
 import { 
   Home, Users, BookOpen, Bell, Plus, IndianRupee, Key, 
   DoorOpen, Edit, Trash2, ShieldAlert, Phone, Send, FileText, Download, X,
-  TrendingUp, BarChart3, Receipt, Camera
+  Camera
 } from 'lucide-react';
 import { DigitalDossier } from '@/components/DigitalDossier';
 import { VerificationCenter } from '@/components/VerificationCenter';
@@ -22,7 +22,7 @@ import { TenantRentScore } from '@/components/TenantRentScore';
 import { FeatureGate } from '@/components/FeatureGate';
 import { OnboardingChecklist } from '@/components/OnboardingChecklist';
 import { EmptyState } from '@/components/EmptyState';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, TrendingUp, LayoutDashboard } from 'lucide-react';
 
 
 /**
@@ -99,7 +99,7 @@ export default function LandlordDashboard() {
   const [expenseDescription, setExpenseDescription] = useState('');
   const [expenseDate, setExpenseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [addingExpense, setAddingExpense] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboardingManual, setShowOnboardingManual] = useState(false);
 
   // Load Everything
   const loadDashboardData = async () => {
@@ -373,7 +373,7 @@ export default function LandlordDashboard() {
   return (
     <div className="min-h-screen bg-[#fafafa] pb-24 pt-4 md:pt-8 px-4 md:px-8 max-w-7xl mx-auto">
       <VerificationCenter />
-      <OnboardingChecklist forceShow={showOnboarding} onClose={() => setShowOnboarding(false)} />
+      <OnboardingChecklist />
       
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -382,7 +382,7 @@ export default function LandlordDashboard() {
           <div className="flex items-center gap-4 mt-1">
             <p className="text-gray-500 font-medium">Here is the summary of your rental operations.</p>
             <button 
-              onClick={() => setShowOnboarding(true)}
+              onClick={() => updateProfile({ onboarding_dismissed: false })}
               className="text-emerald-600 hover:text-emerald-700 font-bold text-sm flex items-center gap-1 transition-all"
             >
               <Sparkles size={14} /> Getting Started
@@ -441,18 +441,44 @@ export default function LandlordDashboard() {
 
       {/* TAB CONTENT AREAS */}
 
+      {/* TAB 5: P&L DASHBOARD */}
+      {activeTab === 'pl' && (
+        <FeatureGate feature="pl_dashboard" requiredPlan="pro">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+            {plSummary.length === 0 ? (
+              <EmptyState 
+                illustration="finance"
+                title="No financial data yet"
+                description="Add expenses like maintenance, taxes, and repairs to see your monthly P&L. Rent income is tracked automatically."
+                ctaText="Add an expense"
+                ctaAction={() => {
+                  setExpenseRoomId(landlordRooms[0]?.id || null);
+                  setIsExpenseModalOpen(true);
+                }}
+              />
+            ) : (
+              <div className="bg-white p-10 rounded-3xl border border-gray-100 shadow-sm text-center">
+                 <TrendingUp size={48} className="text-emerald-600 mx-auto mb-4" />
+                 <h2 className="text-2xl font-black text-gray-900">Profit & Loss Dashboard</h2>
+                 <p className="text-gray-500">Track your property yields and expenses automatically in real-time.</p>
+              </div>
+            )}
+          </div>
+        </FeatureGate>
+      )}
+
       {/* TAB 1: MY ROOMS */}
       {activeTab === 'rooms' && (
         <div className="flex flex-col gap-6">
-           {landlordRooms.length === 0 && !roomsLoading ? (
-             <EmptyState 
-               illustration="house-plus"
-               title="You haven't listed any rooms yet"
-               description="Your first listing is 5 minutes away. Tenants are searching in your city right now."
-               ctaLabel="Add your first room →"
-               ctaHref="/add-room"
-             />
-           ) : (
+            {landlordRooms.length === 0 && !roomsLoading ? (
+              <EmptyState 
+                illustration="rooms"
+                title="Add your first property"
+                description="List your room or flat on REHWAS and start receiving tenant inquiries. Takes less than 5 minutes."
+                ctaText="Add your first room"
+                ctaHref="/add-room"
+              />
+            ) : (
              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                {landlordRooms.map(room => (
                  <div key={room.id} className="relative group">
@@ -554,7 +580,7 @@ export default function LandlordDashboard() {
                            >
                              <Camera size={14} /> Move-in Report
                            </button>
-                           <FeatureGate feature="Rent Receipts" requiredPlan="pro">
+                           <FeatureGate feature="receipt_generator" requiredPlan="pro">
                              <button 
                                onClick={() => {
                                   setSelectedDossierTenant({
@@ -581,19 +607,19 @@ export default function LandlordDashboard() {
                         </td>
                      </tr>
                    ))}
-                   {tenants.length === 0 && (
-                     <tr>
-                       <td colSpan={5} className="p-10 text-center">
-                         <EmptyState 
-                           illustration="people-door"
-                           title="No tenants yet"
-                           description="Add a tenant to start tracking rent payments, utilities, and reminders."
-                           ctaLabel="Add a tenant"
-                           ctaOnClick={() => setIsAddTenantModalOpen(true)}
-                         />
-                       </td>
-                     </tr>
-                   )}
+                    {tenants.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-10 text-center">
+                          <EmptyState 
+                            illustration="tenants"
+                            title="No tenants yet"
+                            description="Once you add a tenant to a room, their details, rent history, and contact info will appear here."
+                            ctaText="Add a tenant"
+                            ctaAction={() => setIsAddTenantModalOpen(true)}
+                          />
+                        </td>
+                      </tr>
+                    )}
                  </tbody>
               </table>
             </div>
@@ -621,10 +647,10 @@ export default function LandlordDashboard() {
            </div>
            {ledgerEntries.length === 0 ? (
              <EmptyState 
-               illustration="notebook"
+               illustration="ledger"
                title="Your rent ledger is empty"
-               description="Add a tenant first, then you can start marking rent as paid or unpaid each month."
-               ctaLabel="Add your first tenant"
+               description="Add a tenant to automatically create their monthly rent ledger. You'll see a 6-month payment grid here."
+               ctaText="Add your first tenant"
                ctaOnClick={() => setIsAddTenantModalOpen(true)}
              />
            ) : (
@@ -677,7 +703,12 @@ export default function LandlordDashboard() {
                       href={waUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      onClick={() => localStorage.setItem('hasUsedWhatsApp', 'true')}
+                      onClick={() => {
+                        localStorage.setItem('hasUsedWhatsApp', 'true');
+                        if (profile && !profile.onboarding_reminder_sent) {
+                          updateProfile({ onboarding_reminder_sent: true });
+                        }
+                      }}
                       className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transform active:scale-95 transition-all shadow-md shadow-[#25D366]/20"
                     >
                       <Send size={16} /> Send WhatsApp Reminder
@@ -688,9 +719,9 @@ export default function LandlordDashboard() {
              {unpaidThisMonth.length === 0 && (
                <div className="col-span-full">
                  <EmptyState 
-                   illustration="confetti-check"
-                   title="All clear! No pending reminders."
-                   description="All your tenants are up to date with rent this month. Great landlord!"
+                   illustration="reminders"
+                   title="All clear! No dues this month"
+                   description="All your tenants have paid for this month. Check back next month."
                  />
                </div>
              )}
