@@ -3,23 +3,22 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
 /**
- * @hook useDepositVault
- * @description
- * What a Supabase Edge Function is:
- * Analogy: A mini server that only wakes up when you call it, then goes back to sleep — 
- * like a restaurant waiter who only comes to your table when you wave, instead of standing there all night.
+ * useDepositVault Hook
+ * 
+ * WHAT IT DOES: Manages the lifecycle of security deposits—from initiation to release.
+ * 
+ * ANALOGY: Like an escrow service in a property deal—the bank (REHWAS) holds the funds 
+ * until both parties satisfy their contractual conditions (signing the move-in report).
  */
 export function useDepositVault() {
   const [loading, setLoading] = useState(false);
 
   /**
-   * @function initiateDeposit
-   * @description 
-   * Loads the Razorpay checkout script and initiates the escrow payment flow.
+   * initiateDeposit
+   * WHAT IT DOES: Creates a Razorpay order and opens the payment gateway.
    * 
-   * What Razorpay Route is:
-   * Analogy: Like an ESCROW service where a bank holds funds between a buyer and seller 
-   * during a property deal. The money is "locked" until both parties fulfill their contract.
+   * PAYMENT VERIFICATION ANALOGY: Like a tamper-evident seal on medicine—if someone 
+   * changes even one character of the payment details, the seal breaks and we reject it.
    */
   const initiateDeposit = async (params: {
     tenantId: string;
@@ -29,7 +28,7 @@ export function useDepositVault() {
   }) => {
     setLoading(true);
     try {
-      // 1. Call create-deposit-order Edge Function
+      // 1. Create Order via Edge Function
       const { data: orderData, error: orderError } = await supabase.functions.invoke('create-deposit-order', {
         body: {
           tenant_id: params.tenantId,
@@ -41,94 +40,72 @@ export function useDepositVault() {
 
       if (orderError) throw orderError;
 
-      // 2. Load Razorpay checkout script dynamically
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      document.body.appendChild(script);
-
+      // 2. Open Razorpay Checkout
       return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        document.body.appendChild(script);
+        
         script.onload = () => {
           const options = {
-            key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-            amount: orderData.amount,
-            currency: orderData.currency,
-            name: "REHWAS Deposit Vault",
-            description: "Securing your rental deposit",
+            key: orderData.key,
             order_id: orderData.order_id,
+            amount: orderData.amount,
+            currency: 'INR',
+            name: 'REHWAS Deposit Vault',
+            description: 'Security deposit — held securely by REHWAS',
+            image: '/logo.png', // Official Rehwas Logo
+            theme: { color: '#10B981' },
             handler: async (response: any) => {
               try {
-                // 3. On payment success: call verify-deposit-payment Edge Function
-                const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-deposit-payment', {
+                // 3. Verify Payment
+                const { error: verifyError } = await supabase.functions.invoke('verify-deposit-payment', {
                   body: {
-                    razorpay_order_id: response.razorpay_order_id,
-                    razorpay_payment_id: response.razorpay_payment_id,
-                    razorpay_signature: response.razorpay_signature,
+                    ...response,
                     escrow_id: orderData.escrow_id
                   }
                 });
 
                 if (verifyError) throw verifyError;
 
-                toast.success(`₹${params.amount.toLocaleString()} secured in REHWAS Vault! 🔒`);
-                resolve(verifyData);
+                toast.success(`₹${params.amount.toLocaleString('en-IN')} secured in REHWAS Vault 🔒`);
+                resolve(orderData.escrow_id);
               } catch (err: any) {
                 toast.error('Payment verification failed');
                 reject(err);
               }
             },
-            prefill: {
-              name: "",
-              email: "",
-              contact: ""
-            },
-            theme: {
-              color: "#4F46E5"
+            modal: { 
+              ondismiss: () => {
+                setLoading(false);
+                reject('Payment cancelled');
+              } 
             }
           };
-
           const rzp = new (window as any).Razorpay(options);
           rzp.open();
-        };
-        script.onerror = () => {
-          toast.error('Failed to load payment gateway');
-          reject(new Error('Script load error'));
         };
       });
 
     } catch (err: any) {
       console.error('Deposit initiation error:', err);
       toast.error(err.message || 'Failed to initiate deposit');
+      throw err;
     } finally {
       setLoading(false);
     }
   };
 
   /**
-   * @function releaseDeposit
-   * @description Releases the escrowed funds to the landlord.
+   * releaseDeposit
+   * WHAT IT DOES: Transfers the held funds to the landlord's linked account.
    * 
-   * What Razorpay Route (Transfers) is:
-   * Analogy: Like a "Release of Funds" authorization in a construction project. 
-   * The bank only moves the money after the architect signs off that the work is correct.
+   * RELEASE ANALOGY: Like a delivery app—the money is only released to the 
+   * restaurant after the customer confirms "order received" (Move-in report signed).
    */
   const releaseDeposit = async (escrowId: string) => {
     setLoading(true);
     try {
-      // 1. Verify that move_in_reports record exists and both parties have signed
-      // (This check should also be enforced on the backend, but we'll check frontend first for UX)
-      const { data: report, error: reportError } = await supabase
-        .from('move_in_reports')
-        .select('tenant_signed_at, landlord_signed_at')
-        .eq('escrow_id', escrowId)
-        .single();
-
-      if (reportError) throw new Error('Could not find inspection report');
-      if (!report.tenant_signed_at || !report.landlord_signed_at) {
-        throw new Error('Move-in report must be signed by both parties first');
-      }
-
-      // 2. Call release-deposit Edge Function
       const { data, error } = await supabase.functions.invoke('release-deposit', {
         body: { escrow_id: escrowId }
       });
@@ -140,6 +117,7 @@ export function useDepositVault() {
     } catch (err: any) {
       console.error('Release error:', err);
       toast.error(err.message || 'Failed to release deposit');
+      throw err;
     } finally {
       setLoading(false);
     }

@@ -166,7 +166,7 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                                 (entry.late_fee_applied || 0) > 0 ? 'bg-red-100 border-red-200 hover:border-red-400 animate-pulse' :
                                 'bg-rose-50 border-rose-100 hover:border-rose-300'}`}
                           >
-                            <div className="flex flex-col items-center">
+                            <div className="flex flex-col items-center" title={(entry.late_fee_applied || 0) > 0 ? `${entry.late_fee_percentage || 5}% late fee applied on ${entry.late_fee_applied_at ? format(new Date(entry.late_fee_applied_at), 'MMM dd') : 'due date'}. Overdue as of today.` : ''}>
                                <span className={`text-[10px] font-black uppercase tracking-widest ${entry.status === 'paid' ? 'text-emerald-600' : (entry.late_fee_applied || 0) > 0 ? 'text-red-700' : 'text-rose-600'}`}>
                                  {entry.status}{(entry.late_fee_applied || 0) > 0 && ' + LATE FEE'}
                                </span>
@@ -271,13 +271,12 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                        <span className="text-lg font-black text-red-700">₹{selectedCell.late_fee_applied}</span>
                     </div>
                     <p className="text-[10px] font-medium text-red-500 leading-tight">
-                      This fee was applied on {selectedCell.due_date ? format(new Date(selectedCell.due_date), 'MMM dd') : 'due date'} because rent was overdue by 5+ days.
+                      Applied after 5 days grace period. Industry standard penalty for late payment.
                     </p>
                     <button 
                       onClick={() => {
                         const fee = selectedCell.late_fee_applied || 0;
                         toast.success(`Late fee of ₹${fee} waived for this month.`);
-                        // We'll update the database to clear the late fee
                         onUpdate(selectedCell.id, { late_fee_applied: 0 });
                         setSelectedCell({...selectedCell, late_fee_applied: 0});
                       }}
@@ -288,9 +287,25 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                   </div>
                 )}
 
-                <div className="pt-2 border-t border-gray-100">
-                   <div className="flex justify-between items-center px-1">
-                      <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Total Due</span>
+                <div className="pt-2 border-t border-gray-100 space-y-2">
+                   <div className="flex justify-between items-center px-1 text-xs font-medium text-gray-500">
+                      <span>Base Rent</span>
+                      <span>₹{parseFloat(editAmount || '0').toLocaleString()}</span>
+                   </div>
+                   {parseFloat(editUtility || '0') > 0 && (
+                     <div className="flex justify-between items-center px-1 text-xs font-medium text-gray-500">
+                        <span>Utilities</span>
+                        <span>₹{parseFloat(editUtility || '0').toLocaleString()}</span>
+                     </div>
+                   )}
+                   {(selectedCell.late_fee_applied || 0) > 0 && (
+                     <div className="flex justify-between items-center px-1 text-xs font-medium text-red-500">
+                        <span>Late Fee</span>
+                        <span>₹{(selectedCell.late_fee_applied || 0).toLocaleString()}</span>
+                     </div>
+                   )}
+                   <div className="flex justify-between items-center px-1 pt-2 border-t border-gray-50">
+                      <span className="text-sm font-bold text-gray-600 uppercase tracking-wider">Total Due</span>
                       <span className="text-2xl font-black text-gray-900">₹{(parseFloat(editAmount || '0') + parseFloat(editUtility || '0') + (selectedCell.late_fee_applied || 0)).toLocaleString()}</span>
                    </div>
                 </div>

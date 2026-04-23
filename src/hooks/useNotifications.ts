@@ -1,110 +1,123 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
-import type { Notification } from '@/types';
+
+export interface LandlordNotification {
+  id: string;
+  landlord_id: string;
+  type: string;
+  title: string;
+  body: string;
+  metadata: any;
+  is_read: boolean;
+  created_at: string;
+}
 
 /**
  * useNotifications Hook
  * 
- * WHAT IT DOES: Manages the lifecycle of user notifications, including real-time synchronization.
+ * WHAT IT DOES: Fetches and manages the landlord's notification list.
+ * ANALOGY: Like checking your email inbox, but for REHWAS alerts.
  * 
- * PUB/SUB PATTERN: 
- * Think of this like a "Mailbox" that notifies you the moment a letter arrives. 
- * Instead of checking the mailbox every 5 minutes (polling), we establish a "Real-time" 
- * connection (WebSocket) with Supabase. 
- * 
- * When a notification is inserted into the DB, Supabase "pushes" it to this hook instantly. 
- * This creates a magical SaaS experience where badges increment live without page refreshes.
+ * SUPABASE REALTIME:
+ * ANALOGY: Like push notifications on your phone — instead of refreshing every 
+ * minute to check for new messages, the server pushes them to you the instant they arrive.
  */
-export const useNotifications = () => {
-  const { profile } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+export function useNotifications() {
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<LandlordNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   /**
-   * Loads initial notification history from Supabase.
+   * Fetches all notifications for the current landlord.
    */
-  const fetchNotifications = async () => {
-    if (!profile) return;
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     
     const { data, error } = await supabase
-      .from('notifications')
+      .from('landlord_notifications')
       .select('*')
-      .eq('user_id', profile.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
+      .eq('landlord_id', user.id)
+      .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching notifications:', error);
-    } else {
-      setNotifications(data || []);
+    if (!error && data) {
+      setNotifications(data);
     }
     setLoading(false);
-  };
+  }, [user]);
 
   /**
    * Marks a specific notification as read.
    */
   const markAsRead = async (id: string) => {
     const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
+      .from('landlord_notifications')
+      .update({ is_read: true })
       .eq('id', id);
 
     if (!error) {
       setNotifications(prev => 
-        prev.map(n => n.id === id ? { ...n, read: true } : n)
+        prev.map(n => n.id === id ? { ...n, is_read: true } : n)
       );
     }
   };
 
   /**
-   * Marks all unread notifications for the user as read.
+   * Marks all notifications for the landlord as read.
    */
   const markAllRead = async () => {
-    if (!profile) return;
+    if (!user) return;
     
     const { error } = await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('user_id', profile.id)
-      .eq('read', false);
+      .from('landlord_notifications')
+      .update({ is_read: true })
+      .eq('landlord_id', user.id)
+      .eq('is_read', false);
 
     if (!error) {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     }
   };
 
   useEffect(() => {
-    if (!profile) return;
+    if (!user) return;
 
     fetchNotifications();
 
-    // Subscribe to REALTIME notifications for the current user
+    /**
+     * Subscribe to Realtime changes on landlord_notifications table.
+     * This ensures the UI stays in sync with the database without manual polling.
+     */
     const channel = supabase
-      .channel(`user-notifications-${profile.id}`)
+      .channel('landlord-notifications')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${profile.id}`,
+          table: 'landlord_notifications',
+          filter: `landlord_id=eq.${user.id}`,
         },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setNotifications(prev => [payload.new as Notification, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as Notification;
-            setNotifications(prev => 
-              prev.map(n => n.id === updated.id ? updated : n)
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setNotifications(prev => prev.filter(n => n.id !== payload.old.id));
-          }
+          setNotifications(prev => [payload.new as LandlordNotification, ...prev]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'landlord_notifications',
+          filter: `landlord_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as LandlordNotification;
+          setNotifications(prev => 
+            prev.map(n => n.id === updated.id ? updated : n)
+          );
         }
       )
       .subscribe();
@@ -112,7 +125,7 @@ export const useNotifications = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile?.id]);
+  }, [user?.id, fetchNotifications]);
 
   return {
     notifications,
@@ -122,4 +135,4 @@ export const useNotifications = () => {
     markAllRead,
     fetchNotifications
   };
-};
+}

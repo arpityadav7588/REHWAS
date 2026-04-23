@@ -25,6 +25,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
 import { PlanBanner } from './PlanBanner';
+import { NotificationBell } from './NotificationBell';
 
 /**
  * UpgradeCelebration Component
@@ -160,23 +161,25 @@ export const AppShell = ({ children }: { children?: React.ReactNode }) => {
   const NavSidebar = () => (
     <div className="flex flex-col h-full bg-white border-r border-slate-100 overflow-y-auto no-scrollbar">
       {/* Workspace Header */}
-      <div className="p-6 pb-4">
-        <div 
-          className="flex items-center gap-3 cursor-pointer group"
-          onClick={() => setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
-        >
-          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-black text-xs">
-            R
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-1">
-              <span className="font-black text-dark tracking-tighter text-lg uppercase">REHWAS</span>
-              <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+        <div className="flex items-center justify-between gap-3 p-6 pb-4">
+          <div 
+            className="flex items-center gap-3 cursor-pointer group flex-1"
+            onClick={() => setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
+          >
+            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-black text-xs">
+              R
             </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
-              {firstName}'s Portfolio
-            </p>
+            <div className="flex-1">
+              <div className="flex items-center gap-1">
+                <span className="font-black text-dark tracking-tighter text-lg uppercase">REHWAS</span>
+                <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                {firstName}'s Portfolio
+              </p>
+            </div>
           </div>
+          <NotificationBell />
         </div>
 
         {isWorkspaceDropdownOpen && (

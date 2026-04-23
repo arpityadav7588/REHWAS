@@ -2,105 +2,98 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /**
- * apply-late-fees Edge Function
+ * Supabase Edge Function: apply-late-fees
  * 
- * WHAT IT DOES: 
- * Scans for unpaid rent entries that are 5+ days past their due date.
- * Calculates a late fee based on the room's configuration (default 5%) 
- * and adds it to the ledger. Sends an automated notice to the tenant via chat.
+ * WHAT IT DOES: Finds all unpaid rent entries that are 5+ days past due and 
+ * automatically appends a late fee.
  * 
- * CRON ANALOGY: Like an automated billing clerk who checks the ledger every morning, 
- * identifies late payers, stamps a late fee on their bill, and sends them a reminder.
+ * ANALOGY: Like setting a recurring alarm inside your database's own brain (pg_cron) — 
+ * it wakes up at 10 AM every day without any external trigger.
+ * 
+ * 5 DAYS GRACE PERIOD: Like a credit card's grace period — gives tenants a few 
+ * days to pay before the penalty kicks in, which is standard industry practice in India.
  */
 serve(async (req) => {
-  // Security check: Only allow calls from the service role (pg_cron)
-  const authHeader = req.headers.get('Authorization')
-  if (authHeader !== `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) {
-    return new Response('Unauthorized', { status: 401 })
-  }
-  
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
   
-  const today = new Date()
-  const fiveDaysAgo = new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000)
-  
-  /**
-   * QUERY OVERDUE ENTRIES
-   * Why late_fee_applied = 0? 
-   * Analogy: Like checking if you've already stamped a letter before stamping it again.
-   * This prevents us from double-charging the late fee if the cron runs multiple times or 
-   * if the user is already penalized.
-   */
-  const { data: overdueEntries, error: fetchError } = await supabase
+  const today = new Date().toISOString().split('T')[0]
+  const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+    .toISOString().split('T')[0]
+
+  const { data: overdueEntries, error } = await supabase
     .from('rent_ledger')
     .select(`
       id,
-      amount,
       tenant_id,
       landlord_id,
+      amount,
       month,
       due_date,
-      late_fee_applied,
+      late_fee_percentage,
       tenants (
         id,
-        tenant_profile_id,
         room_id,
-        rooms (late_fee_pct, title),
-        profiles!tenant_profile_id (full_name, phone)
+        tenant_profile_id,
+        rooms ( title, late_fee_percentage )
       )
     `)
     .eq('status', 'unpaid')
-    .lte('due_date', fiveDaysAgo.toISOString().split('T')[0])
     .eq('late_fee_applied', 0)
-
-  if (fetchError) {
-    return new Response(JSON.stringify({ error: fetchError.message }), { status: 500 })
+    .lte('due_date', fiveDaysAgo)
+  
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
   }
 
   const results = []
   
   for (const entry of overdueEntries || []) {
-    // 1. Calculate late fee (default to 5% if room doesn't have it set)
-    const lateFeePct = (entry.tenants as any).rooms?.late_fee_pct || 5
-    const lateFee = Math.round(entry.amount * (lateFeePct / 100))
+    /**
+     * WHY WE CHECK late_fee_applied === 0:
+     * ANALOGY: Checking if a stamp is already on the letter before stamping it 
+     * again — prevents double-charging.
+     */
     
-    // 2. Update ledger with the late fee
-    const { error: updateError } = await supabase
+    // Use room-level late fee % if set, otherwise fall back to ledger-level
+    const lateFeePercent =
+      entry.tenants?.rooms?.late_fee_percentage ??
+      entry.late_fee_percentage ??
+      5
+    
+    const lateFeeAmount = Math.round((entry.amount * lateFeePercent) / 100)
+    const daysOverdue = Math.floor(
+      (new Date().getTime() - new Date(entry.due_date).getTime()) / (1000 * 60 * 60 * 24)
+    )
+    
+    await supabase
       .from('rent_ledger')
-      .update({ late_fee_applied: lateFee })
+      .update({
+        late_fee_applied: lateFeeAmount,
+        late_fee_applied_at: new Date().toISOString()
+      })
       .eq('id', entry.id)
     
-    if (updateError) continue
-
-    // 3. Send automated notification message via REHWAS Chat
-    const tenantProfile = (entry.tenants as any).profiles
-    const roomTitle = (entry.tenants as any).rooms?.title
-    
+    // Notify tenant via in-app message
     await supabase.from('messages').insert({
-      room_id: (entry.tenants as any).room_id,
+      room_id: entry.tenants.room_id,
       sender_id: entry.landlord_id,
-      receiver_id: (entry.tenants as any).tenant_profile_id,
-      content: `⚠️ Automated Notice: Your rent for ${entry.month} at "${roomTitle}" is overdue by 5 days. A late fee of ₹${lateFee} (${lateFeePct}%) has been applied. Total due: ₹${entry.amount + lateFee}. Please clear your dues on REHWAS.`,
-      is_automated: true
-    })
-
-    // 4. Also send a notification badge/toast trigger
-    await supabase.from('notifications').insert({
-      user_id: (entry.tenants as any).tenant_profile_id,
-      type: 'late_fee',
-      title: 'Late Fee Applied',
-      body: `A late fee of ₹${lateFee} was added to your ${entry.month} rent.`,
-      link: '/profile'
+      receiver_id: entry.tenants.tenant_profile_id,
+      content: `⚠️ Late Fee Notice — ${entry.month}\n\nYour rent of ₹${entry.amount.toLocaleString('en-IN')} was due on ${entry.due_date} and is now ${daysOverdue} days overdue.\n\nA late fee of ₹${lateFeeAmount.toLocaleString('en-IN')} (${lateFeePercent}%) has been applied.\n\nTotal now due: ₹${(entry.amount + lateFeeAmount).toLocaleString('en-IN')}\n\nPlease pay as soon as possible. — REHWAS`
     })
     
-    results.push({ entry_id: entry.id, late_fee: lateFee })
+    results.push({
+      ledger_id: entry.id,
+      days_overdue: daysOverdue,
+      late_fee_applied: lateFeeAmount
+    })
   }
   
-  return new Response(JSON.stringify({ 
-    processed: results.length, 
-    results 
-  }), { headers: { 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify({
+    processed: results.length,
+    timestamp: new Date().toISOString(),
+    results
+  }), { status: 200 })
 })

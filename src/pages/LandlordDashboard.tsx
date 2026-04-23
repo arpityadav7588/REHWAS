@@ -18,8 +18,11 @@ import { RentAgreementModal } from '@/components/RentAgreementModal';
 import { useRooms as useRoomsHook } from '@/hooks/useRooms';
 import { Users, Home, Phone, FileText, Camera, ShieldAlert, Share2, Rocket, Edit, Trash2, Plus, Key, DoorOpen, BookOpen, Bell, TrendingUp, Sparkles, ExternalLink, ShieldCheck, Lock, IndianRupee, Zap, Wrench, Droplets, Calculator, History, ChevronDown, ChevronUp, Receipt, Check, X, Info, Scale } from 'lucide-react';
 import { VacancyBleedCard } from '@/components/VacancyBleedCard';
-import { generateITRExport, getFinancialYear } from '@/lib/itrExport';
+import { calculateVacancyBleed } from '@/lib/vacancyBleed';
+import { getFinancialYear, getFYBounds, calculateScheduleHP, type ScheduleHPProperty } from '@/lib/itrExport';
+import { generateITRExcel } from '@/lib/generateITRExcel';
 import { AlertCircle, FileSpreadsheet } from 'lucide-react';
+import { useDepositVault } from '@/hooks/useDepositVault';
 
 
 /**
@@ -51,6 +54,7 @@ export default function LandlordDashboard() {
   const { rooms, fetchRooms, deleteRoom, updateRoom, loading: roomsLoading } = useRooms();
   const { fetchLedger, getMonthlyTotal, createLedgerEntries, updateLedgerEntry, applyBulkUtilityBill } = useLedger();
   const { hasPlan } = useSubscription();
+  const { releaseDeposit, loading: depositLoading } = useDepositVault();
 
   // Selected Tab State
   const [activeTab, setActiveTab] = useState<'rooms' | 'tenants' | 'ledger' | 'reminders' | 'pl'>('rooms');
@@ -60,6 +64,9 @@ export default function LandlordDashboard() {
   const [tenants, setTenants] = useState<TenantExtended[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<RentLedgerExtended[]>([]);
   const [rentCollected, setRentCollected] = useState(0);
+  const [escrows, setEscrows] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
+  const [allExpenses, setAllExpenses] = useState<any[]>([]);
   
   // P&L State
   const { fetchPLData, addExpense } = usePL();
@@ -98,6 +105,13 @@ export default function LandlordDashboard() {
   // ITR Export State
   const [selectedFY, setSelectedFY] = useState(getFinancialYear().label);
   const [generatingITR, setGeneratingITR] = useState(false);
+  const [expenseData, setExpenseData] = useState({
+    category: 'maintenance',
+    room_id: '',
+    amount: '',
+    description: '',
+    expense_date: format(new Date(), 'yyyy-MM-dd')
+  });
 
   const fyOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -164,7 +178,7 @@ export default function LandlordDashboard() {
 
   // New Expense State
   const [expenseAmount, setExpenseAmount] = useState('');
-  const [expenseCategory, setExpenseCategory] = useState<'maintenance' | 'tax' | 'insurance' | 'repair' | 'other'>('maintenance');
+  const [expenseCategory, setExpenseCategory] = useState<'maintenance' | 'tax' | 'insurance' | 'repair' | 'loan_interest' | 'other'>('maintenance');
   const [expenseDescription, setExpenseDescription] = useState('');
   const [expenseDate, setExpenseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [addingExpense, setAddingExpense] = useState(false);
@@ -190,10 +204,21 @@ export default function LandlordDashboard() {
       const { data: ledgerData } = await fetchLedger(profile.id);
       if (ledgerData) setLedgerEntries(ledgerData);
 
-      // 4. Fetch Month Total Amount
-      const currentMonthStr = format(new Date(), 'MMM yyyy');
-      const { total } = await getMonthlyTotal(profile.id, currentMonthStr);
       setRentCollected(total);
+      
+      // 5. Fetch Deposit Escrows
+      const { data: escrowData } = await supabase
+        .from('deposit_escrow')
+        .select('*')
+        .eq('landlord_id', profile.id);
+      if (escrowData) setEscrows(escrowData);
+
+      // 6. Fetch Move-in Reports (to check signing status)
+      const { data: reportData } = await supabase
+        .from('move_in_reports')
+        .select('id, room_id, tenant_id, landlord_signed_at, tenant_signed_at')
+        .eq('landlord_id', profile.id);
+      if (reportData) setReports(reportData);
 
     } catch (err) {
       console.error(err);
@@ -205,8 +230,9 @@ export default function LandlordDashboard() {
 
   const loadPLData = async () => {
     if (!profile) return;
-    const { summary } = await fetchPLData(profile.id);
+    const { summary, rawExpenses } = await fetchPLData(profile.id);
     setPlSummary(summary);
+    setAllExpenses(rawExpenses);
   };
 
   // Chart Logic (CDN injection)
@@ -576,16 +602,20 @@ export default function LandlordDashboard() {
               />
             ) : (
               <div className="flex flex-col gap-6">
-                {/* VACANCY BLEED SUMMARY BANNER */}
+                {/* TOTAL VACANCY SUMMARY BANNER */}
                 {vacantCount > 0 && (
                   <div className="bg-rose-600 rounded-[2rem] p-6 text-white flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl shadow-rose-200 animate-in slide-in-from-top-4 duration-500">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-                        <AlertTriangle size={24} className="animate-pulse" />
+                        <DoorOpen size={24} className="animate-pulse" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-black tracking-tight leading-none">{vacantCount} rooms are currently vacant</h3>
-                        <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-1.5">You are losing ₹{totalBleedPerDay.toLocaleString()} in potential revenue every day</p>
+                        <h3 className="text-xl font-black tracking-tight leading-none">
+                          {vacantCount} {vacantCount === 1 ? 'room is' : 'rooms are'} vacant
+                        </h3>
+                        <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-1.5">
+                          ₹{totalBleedPerDay.toLocaleString('en-IN')}/day in lost revenue
+                        </p>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -605,7 +635,7 @@ export default function LandlordDashboard() {
                       {room.available ? (
                         <VacancyBleedCard 
                           room={room} 
-                          onBoost={() => {
+                          onBoostClick={() => {
                             setSelectedBoostRoom(room);
                             setIsBoostModalOpen(true);
                           }} 
@@ -702,22 +732,51 @@ export default function LandlordDashboard() {
                            {t.rooms?.title || 'Unknown Room'}
                         </td>
                         <td className="p-5">
-                            {/* Mocking Deposit Status - In Phase 3 this will come from deposit_escrow table */}
-                            {t.id.length % 2 === 0 ? (
-                              <button 
-                                onClick={() => setSelectedDepositTenant(t)}
-                                className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-emerald-100 transition-colors"
-                              >
-                                <Lock size={12} className="fill-emerald-400" /> Held by REHWAS
-                              </button>
-                            ) : (
-                              <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-100 text-[10px] font-black uppercase tracking-widest w-fit">
-                                  <ShieldAlert size={12} /> Not Secured
+                            {(() => {
+                              const escrow = escrows.find(e => e.tenant_id === t.id && e.room_id === t.room_id);
+                              const report = reports.find(r => r.tenant_id === t.id && r.room_id === t.room_id);
+                              const isSigned = report?.landlord_signed_at && report?.tenant_signed_at;
+
+                              if (escrow) {
+                                return (
+                                  <div className="flex flex-col gap-2">
+                                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest w-fit shadow-sm ${
+                                      escrow.status === 'released' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                      escrow.status === 'held' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                      'bg-gray-50 text-gray-700 border-gray-100'
+                                    }`}>
+                                      {escrow.status === 'held' ? <Lock size={12} className="fill-emerald-400" /> : <ShieldCheck size={12} />}
+                                      {escrow.status.replace('_', ' ')} by REHWAS
+                                    </div>
+                                    {escrow.status === 'held' && (
+                                      <button 
+                                        disabled={!isSigned || depositLoading}
+                                        onClick={() => releaseDeposit(escrow.id)}
+                                        className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 w-fit ${
+                                          isSigned 
+                                          ? 'bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700 shadow-md active:scale-95' 
+                                          : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                        }`}
+                                      >
+                                        <TrendingUp size={12} /> {depositLoading ? 'Processing...' : 'Release Deposit'}
+                                      </button>
+                                    )}
+                                    {!isSigned && escrow.status === 'held' && (
+                                      <p className="text-[9px] font-bold text-amber-600 uppercase tracking-tight pl-1">Awaiting Report Signatures</p>
+                                    )}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-100 text-[10px] font-black uppercase tracking-widest w-fit">
+                                    <ShieldAlert size={12} /> Not Secured
+                                  </div>
+                                  <button className="text-[10px] font-bold text-indigo-600 hover:underline text-left pl-1">Ask to secure deposit →</button>
                                 </div>
-                                <button className="text-[10px] font-bold text-indigo-600 hover:underline text-left pl-1">Ask to secure deposit →</button>
-                              </div>
-                            )}
+                              );
+                            })()}
                          </td>
                         <td className="p-5 font-extrabold text-dark text-lg">₹{t.rent_amount.toLocaleString()}</td>
                         <td className="p-5 text-right flex items-center justify-end gap-2">
@@ -1063,6 +1122,20 @@ export default function LandlordDashboard() {
                            </div>
                          ))}
                       </div>
+
+                      {/* ITR Preview Cards */}
+                      <div className="grid grid-cols-3 gap-4 mt-8">
+                         {[
+                           { label: 'Rent Received', value: ledgerEntries.filter(l => l.status === 'paid').reduce((sum, l) => sum + (l.amount || 0), 0), color: 'text-emerald-400' },
+                           { label: 'Expenses Logged', value: allExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0), color: 'text-amber-400' },
+                           { label: 'Estimated Net', value: ledgerEntries.filter(l => l.status === 'paid').reduce((sum, l) => sum + (l.amount || 0), 0) - allExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0), color: 'text-blue-400' }
+                         ].map((metric, i) => (
+                           <div key={i} className="bg-white/5 border border-white/10 p-4 rounded-3xl text-center">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">{metric.label}</p>
+                              <p className={`text-sm font-black ${metric.color}`}>₹{metric.value.toLocaleString('en-IN')}</p>
+                           </div>
+                         ))}
+                      </div>
                    </div>
 
                    <div className="w-full md:w-80 bg-white/5 border border-white/10 p-6 md:p-8 rounded-[2.5rem] backdrop-blur-sm">
@@ -1093,15 +1166,92 @@ export default function LandlordDashboard() {
                           onClick={async () => {
                              try {
                                setGeneratingITR(true);
-                               const blob = await generateITRExport(profile!.id, profile!.full_name, selectedFY);
+                               const { start, end } = getFYBounds(selectedFY);
+                               
+                               // 1. Fetch Paid Rent Ledger
+                               const { data: ledger } = await supabase
+                                 .from('rent_ledger')
+                                 .select(`
+                                   *,
+                                   rooms(title, address, locality, city),
+                                   tenants(profiles(full_name))
+                                 `)
+                                 .eq('landlord_id', profile!.id)
+                                 .eq('status', 'paid')
+                                 .gte('due_date', start.toISOString())
+                                 .lte('due_date', end.toISOString());
+
+                               // 2. Fetch Expenses
+                               const { data: expenses } = await supabase
+                                 .from('expenses')
+                                 .select(`
+                                   *,
+                                   rooms(title)
+                                 `)
+                                 .eq('landlord_id', profile!.id)
+                                 .gte('expense_date', start.toISOString().split('T')[0])
+                                 .lte('expense_date', end.toISOString().split('T')[0]);
+
+                               // 3. Group by Room for Schedule HP
+                               const propertyMap = new Map<string, ScheduleHPProperty>();
+                               
+                               (ledger || []).forEach(entry => {
+                                 const roomId = entry.room_id;
+                                 if (!propertyMap.has(roomId)) {
+                                   propertyMap.set(roomId, {
+                                     propertyAddress: (entry.rooms as any)?.address || 'Property',
+                                     locality: (entry.rooms as any)?.locality || '',
+                                     city: (entry.rooms as any)?.city || '',
+                                     tenantName: (entry.tenants as any)?.profiles?.full_name || 'Tenant',
+                                     annualRentReceived: 0,
+                                     municipalTaxPaid: 0,
+                                     netAnnualValue: 0,
+                                     standardDeduction: 0,
+                                     interestOnLoan: 0,
+                                     incomeFromHP: 0
+                                   });
+                                 }
+                                 const prop = propertyMap.get(roomId)!;
+                                 prop.annualRentReceived += Number(entry.amount || 0);
+                               });
+
+                               (expenses || []).forEach(exp => {
+                                 if (exp.room_id && propertyMap.has(exp.room_id)) {
+                                    const prop = propertyMap.get(exp.room_id)!;
+                                    if (exp.category === 'tax') prop.municipalTaxPaid += Number(exp.amount);
+                                    if (exp.category === 'loan_interest') prop.interestOnLoan += Number(exp.amount);
+                                 }
+                               });
+
+                               const properties = Array.from(propertyMap.values()).map(p => {
+                                 const calcs = calculateScheduleHP(p.annualRentReceived, p.municipalTaxPaid, p.interestOnLoan);
+                                 return { ...p, ...calcs };
+                               });
+
+                               // 4. Generate & Download
+                               const blob = await generateITRExcel(
+                                 profile!,
+                                 selectedFY,
+                                 properties,
+                                 (ledger || []).map(l => ({ 
+                                   ...l, 
+                                   room_title: (l.rooms as any)?.title, 
+                                   tenant_name: (l.tenants as any)?.profiles?.full_name 
+                                 })),
+                                 (expenses || []).map(e => ({ 
+                                   ...e, 
+                                   room_title: (e.rooms as any)?.title 
+                                 }))
+                               );
+
                                const url = window.URL.createObjectURL(blob);
                                const a = document.createElement('a');
                                a.href = url;
                                a.download = `REHWAS_ITR_${selectedFY.replace(' ', '_')}_${profile?.full_name.replace(' ', '_')}.xlsx`;
                                document.body.appendChild(a);
                                a.click();
-                               window.URL.revokeObjectURL(url);
-                               toast.success('ITR Export generated successfully! 📊');
+                               document.body.removeChild(a);
+                               toast.success('ITR Export ready — share with your CA 📊');
                              } catch (err) {
                                toast.error('Failed to generate export');
                                console.error(err);
@@ -1623,14 +1773,14 @@ export default function LandlordDashboard() {
                 <div>
                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 font-sans">Spending Category</label>
                    <div className="grid grid-cols-3 gap-2">
-                      {['maintenance', 'tax', 'insurance', 'repair', 'other'].map((cat: any) => (
+                      {['maintenance', 'tax', 'insurance', 'repair', 'loan_interest', 'other'].map((cat: any) => (
                         <button
                           key={cat}
                           type="button"
-                          onClick={() => setExpenseCategory(cat)}
+                          onClick={() => setExpenseCategory(cat as any)}
                           className={`py-3 px-1 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all border-2 font-sans ${expenseCategory === cat ? 'bg-slate-900 border-slate-900 text-white' : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100'}`}
                         >
-                          {cat}
+                          {cat.replace('_', ' ')}
                         </button>
                       ))}
                    </div>

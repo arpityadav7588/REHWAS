@@ -52,7 +52,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({ room, compact = false }) => 
             Available Now
           </div>
         )}
-        {room.street_video_url && (
+        {(room.street_video_url || (room.street_night_videos && room.street_night_videos.length > 0)) && (
           <div className="absolute top-4 right-4 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 text-white shadow-xl border border-white/20">
             <Moon size={12} className="fill-emerald-400 text-emerald-400" /> Night View
           </div>

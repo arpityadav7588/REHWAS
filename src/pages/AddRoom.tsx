@@ -549,14 +549,14 @@ export default function AddRoom() {
                   <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl opacity-70 cursor-not-allowed group relative">
                     <div className="flex justify-between items-center">
                        <div>
-                         <label className="block text-sm font-bold text-slate-500 mb-1">Late Fee Percentage</label>
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Automatic charge after 5 days</p>
+                         <label className="block text-sm font-bold text-slate-500 mb-1">Late fee percentage (applied after 5 days overdue)</label>
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Standard in India: 2–10%. Leave at 0 to disable.</p>
                        </div>
                        <div className="text-xl font-black text-slate-400">5%</div>
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 rounded-2xl">
                        <p className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                         <Sparkles size={14} /> Upgrade to Pro to enable
+                         <Sparkles size={14} /> Automated late fees are a Pro feature. Upgrade to Pro →
                        </p>
                     </div>
                   </div>
@@ -565,17 +565,18 @@ export default function AddRoom() {
                 <div className="bg-indigo-50 border border-indigo-100 p-5 rounded-2xl">
                   <div className="flex justify-between items-center mb-3">
                     <div>
-                      <label className="block text-sm font-bold text-indigo-900 mb-1">Late Fee Percentage</label>
-                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Applied automatically after 5 days</p>
+                      <label className="block text-sm font-bold text-indigo-900 mb-1">Late fee percentage (applied after 5 days overdue)</label>
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Standard in India: 2–10%. Leave at 0 to disable.</p>
                     </div>
                     <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-indigo-200">
                       <input 
                         type="number"
                         min="0"
-                        max="20"
+                        max="25"
                         value={form.late_fee_pct}
                         onChange={(e) => setForm({...form, late_fee_pct: parseInt(e.target.value) || 0})}
-                        className="w-12 text-lg font-black text-indigo-600 outline-none"
+                        className="w-12 text-lg font-black text-indigo-600 outline-none text-right"
+                        placeholder="5"
                       />
                       <span className="text-lg font-black text-indigo-400">%</span>
                     </div>

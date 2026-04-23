@@ -18,7 +18,7 @@ export const useRooms = () => {
    */
   const fetchRooms = async (filters?: { city?: string; room_type?: string; max_rent?: number }) => {
     setLoading(true);
-    let query = supabase.from('rooms').select('*').eq('available', true);
+    let query = supabase.from('rooms').select('*, street_night_videos(id)').eq('available', true);
 
     if (filters?.city) query = query.ilike('city', filters.city);
     if (filters?.room_type) query = query.eq('room_type', filters.room_type);
@@ -63,7 +63,7 @@ export const useRooms = () => {
     const insertData = { ...data };
     // Auto-set vacancy date if created as available
     if (data.available === true) {
-      insertData.vacant_since = new Date().toISOString().split('T')[0];
+      insertData.vacant_since = new Date().toISOString();
     }
 
     const { data: newRoom, error } = await supabase
@@ -86,8 +86,12 @@ export const useRooms = () => {
     const updateData = { ...data };
     
     // Auto-manage vacant_since if availability is toggled
+    /**
+     * WHY WE AUTO-SET: Like an automatic timestamp on a form — as soon as you 
+     * check "vacant", the clock starts.
+     */
     if (data.available === true) {
-      updateData.vacant_since = new Date().toISOString().split('T')[0];
+      updateData.vacant_since = new Date().toISOString();
     } else if (data.available === false) {
       updateData.vacant_since = null;
     }

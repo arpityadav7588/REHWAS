@@ -68,7 +68,7 @@ export default function Discover() {
     // Night view filter
     const nightViewParam = searchParams.get('has_night_view');
     if (nightViewParam === 'true') {
-      result = result.filter(r => r.street_video_url !== null && r.street_video_url !== undefined);
+      result = result.filter(r => (r.street_night_videos && r.street_night_videos.length > 0) || r.street_video_url);
     }
     
     return result;

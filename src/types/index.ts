@@ -75,10 +75,49 @@ export interface Room {
     peak_traffic_multiplier?: number;
   };
   street_video_url?: string | null;
+  /**
+   * Date when the room became vacant. 
+   * ANALOGY: Like an automatic timestamp on a form — as soon as you check "vacant", 
+   * the clock starts, tracking revenue that can never be recovered.
+   */
   vacant_since?: string | null;
+  /**
+   * The rent expected for this room, used for vacancy bleed calculations.
+   * ANALOGY: Every empty night is revenue that can never be recovered, 
+   * like a hotel tracking "unsold room nights".
+   */
   expected_rent?: number;
-  late_fee_pct?: number;
+  /**
+   * Late fee percentage configured for this room.
+   * ANALOGY: Like a credit card's interest rate — it defines the penalty 
+   * for missing a payment deadline.
+   */
+  late_fee_percentage?: number;
+  late_fee_pct?: number; // Legacy/Alias
   boosted_until?: string | null;
+  created_at: string;
+  // Joins
+  profiles?: Partial<Profile>;
+  street_night_videos?: NightVideo[];
+}
+
+/**
+ * Represents a user-uploaded night-time video of the property surroundings.
+ * ANALOGY: Like keeping photos in a photo album vs pasting them directly in a document.
+ * The album (table) can hold multiple photos from multiple people for the same room.
+ */
+export interface NightVideo {
+  id: string;
+  room_id: string;
+  uploaded_by: string;
+  uploader_type: 'tenant' | 'landlord' | 'past_tenant';
+  video_url: string;
+  thumbnail_url?: string;
+  duration_seconds?: number;
+  recorded_at: string;
+  description?: string;
+  upvotes: number;
+  is_approved: boolean;
   created_at: string;
 }
 
@@ -108,8 +147,25 @@ export interface RentLedger {
   arrears?: number;
   status: 'paid' | 'unpaid' | 'partial';
   paid_on?: string;
+  /**
+   * The date when rent was due. 
+   * ANALOGY: Like the "Due Date" on a credit card statement.
+   */
   due_date?: string;
+  /**
+   * Percentage used to calculate the late fee.
+   */
+  late_fee_percentage?: number;
+  /**
+   * The actual numeric amount of late fee applied.
+   */
   late_fee_applied?: number;
+  /**
+   * Timestamp when the late fee was automatically applied.
+   * ANALOGY: Like checking if a stamp is already on the letter before stamping it again.
+   */
+  late_fee_applied_at?: string;
+  late_fee_applied_legacy?: number; // Alias
   payment_mode?: 'cash' | 'upi' | 'bank';
   notes?: string;
 }

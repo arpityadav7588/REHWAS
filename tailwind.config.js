@@ -36,7 +36,15 @@ export default {
         headline: ['Plus Jakarta Sans', 'sans-serif'],
         body: ['Inter', 'sans-serif'],
       },
-
+      keyframes: {
+        'pulse-dot': {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.4', transform: 'scale(1.2)' },
+        },
+      },
+      animation: {
+        'pulse-dot': 'pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
     },
   },
   plugins: [],

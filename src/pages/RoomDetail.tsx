@@ -6,7 +6,7 @@ import type { Room } from '@/types';
 import toast from 'react-hot-toast';
 import { RoomCard } from '@/components/RoomCard';
 import { 
-  X, Loader2, FileText, MapPin, Zap, Moon, ShieldCheck, Lock, Info, Check
+  X, Loader2, FileText, MapPin, Zap, Moon, ShieldCheck, Lock, Info, Check, MessageSquare
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
@@ -17,8 +17,14 @@ import { ChatWindow } from '@/components/ChatWindow';
 import { CommuteWidget } from '@/components/CommuteWidget';
 import { TenantRentScore } from '@/components/TenantRentScore';
 import { RentHistoryChart } from '@/components/RentHistoryChart';
+import { NightViewPlayer } from '@/components/NightViewPlayer';
+import { NightViewUploader } from '@/components/NightViewUploader';
 
 
+
+import { BhoomiScoreCard } from '@/components/BhoomiScoreCard';
+import { ReviewForm } from '@/components/ReviewForm';
+import { recomputeBhoomiScore } from '@/lib/bhoomiScore';
 
 interface RoomWithLandlord extends Room {
   profiles: {
@@ -26,6 +32,7 @@ interface RoomWithLandlord extends Room {
     avatar_url?: string;
     created_at: string;
     kyc_verified: boolean;
+    phone?: string;
   };
 }
 
@@ -87,6 +94,12 @@ export default function RoomDetail() {
   const [moveInReport, setMoveInReport] = useState<any>(null);
   const [galleryMode, setGalleryMode] = useState<'photos' | 'night_view'>('photos');
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [isNightUploaderOpen, setIsNightUploaderOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [videoCount, setVideoCount] = useState(0);
+  const [moveInCount, setMoveInCount] = useState(0);
+  const [currentTenant, setCurrentTenant] = useState<any>(null);
   const { initiateDeposit, loading: depositLoading } = useDepositVault();
 
   useEffect(() => {
@@ -100,7 +113,7 @@ export default function RoomDetail() {
       // Fetch room and join with the profiles table for landlord info
       const { data, error } = await supabase
         .from('rooms')
-        .select('*, profiles(full_name, avatar_url, created_at, kyc_verified)')
+        .select('*, profiles(full_name, avatar_url, created_at, kyc_verified, phone)')
         .eq('id', id)
         .single();
         
@@ -121,6 +134,27 @@ export default function RoomDetail() {
           .single();
           
         if (reportData) setMoveInReport(reportData);
+
+        const { count: mCount } = await supabase
+          .from('move_in_reports')
+          .select('*', { count: 'exact', head: true })
+          .eq('room_id', id)
+          .not('landlord_signed_at', 'is', null)
+          .not('tenant_signed_at', 'is', null);
+        
+        setMoveInCount(mCount || 0);
+
+        // Fetch tenant record for the current user if logged in
+        if (profile) {
+          const { data: tData } = await supabase
+            .from('tenants')
+            .select('*')
+            .eq('room_id', id)
+            .eq('tenant_profile_id', profile.id)
+            .maybeSingle();
+          
+          if (tData) setCurrentTenant(tData);
+        }
       }
       
       // Instantly fetch similar local properties in parallel logically
@@ -135,6 +169,22 @@ export default function RoomDetail() {
           .limit(3);
           
         if (similar) setSimilarRooms(similar);
+
+        // Fetch community signals
+        const { count: vCount } = await supabase
+          .from('street_night_videos')
+          .select('*', { count: 'exact', head: true })
+          .eq('room_id', id)
+          .eq('is_approved', true);
+        
+        setVideoCount(vCount || 0);
+
+        const { data: revs } = await supabase
+          .from('room_reviews')
+          .select('rating')
+          .eq('room_id', id);
+        
+        setReviews(revs || []);
       }
       setLoading(false);
     };
@@ -297,53 +347,45 @@ export default function RoomDetail() {
             </div>
           ) : (
             <div className="px-4 -mt-12 relative z-10">
-              <div className="bg-slate-900 rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden aspect-video max-w-2xl mx-auto flex flex-col relative group">
-                {room.street_video_url ? (
-                  <>
-                    <video 
-                      src={room.street_video_url} 
-                      className="w-full h-full object-cover"
-                      controls
-                      poster="/night-poster-placeholder.jpg"
-                    />
-                    <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
-                      <div className="bg-black/60 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-white/20">
-                        <Moon size={12} className="fill-emerald-400 text-emerald-400" /> Night View
-                      </div>
-                      {room.profiles?.kyc_verified && (
-                        <div className="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-emerald-400/50">
-                          <ShieldCheck size={12} /> Verified by REHWAS
-                        </div>
-                      )}
-                    </div>
-                    <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur-sm text-white/70 px-3 py-1 rounded-lg text-[9px] font-bold">
-                      Recorded at night by landlord • {format(parseISO(room.created_at), 'MMM yyyy')}
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                      <Moon size={32} className="text-slate-500" />
-                    </div>
-                    <h4 className="text-white font-black text-lg mb-2">No night view available</h4>
-                    <p className="text-slate-400 text-sm max-w-xs mb-6">Ask the landlord for a walkthrough video of the street at night.</p>
-                    <button 
-                      onClick={() => {
-                        setIsChatOpen(true);
-                        // The ChatWindow component should handle the initial message if we pass it, 
-                        // but here we'll just open the chat.
-                        toast.success('Chat opened! Ask the landlord for a video.');
-                      }}
-                      className="bg-white text-slate-900 px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-400 transition-colors"
-                    >
-                      Request Night View
-                    </button>
-                  </div>
-                )}
-              </div>
+              <NightViewPlayer 
+                roomId={room.id} 
+                onUploadClick={() => setIsNightUploaderOpen(true)}
+                isLoggedIn={!!profile}
+              />
             </div>
           )}
         </section>
+
+        <NightViewUploader 
+          roomId={room.id}
+          isOpen={isNightUploaderOpen}
+          onClose={() => setIsNightUploaderOpen(false)}
+          onSuccess={() => {
+            recomputeBhoomiScore(room.id, supabase);
+            setVideoCount(prev => prev + 1);
+          }}
+        />
+
+        {profile && (
+          <ReviewForm 
+            roomId={room.id}
+            userId={profile.id}
+            isOpen={isReviewModalOpen}
+            onClose={() => setIsReviewModalOpen(false)}
+            onSuccess={() => {
+              recomputeBhoomiScore(room.id, supabase);
+              // Trigger a re-fetch of community signals
+              const fetchRevs = async () => {
+                const { data: revs } = await supabase
+                  .from('room_reviews')
+                  .select('rating')
+                  .eq('room_id', room.id);
+                setReviews(revs || []);
+              };
+              fetchRevs();
+            }}
+          />
+        )}
 
         <div className="max-w-4xl mx-auto px-4 lg:px-0">
           {/* 3. ROOM HEADER */}
@@ -363,23 +405,34 @@ export default function RoomDetail() {
                   <p className="text-gray-400 font-bold text-xs uppercase tracking-widest flex items-center gap-1 ml-1"><MapPin size={14}/> {room.locality}, {room.city}</p>
                 </div>
               </div>
-
-              {/* BHOOMI SCORE (Asset Trust Score) */}
-              {room.bhoomi_score && (
-                <div className="bg-slate-900 border-2 border-emerald-500/20 p-5 rounded-[2.5rem] flex flex-col items-center justify-center min-w-[160px] shadow-2xl shadow-emerald-500/10 hover:scale-105 transition-all relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1 relative z-10">Bhoomi Score</span>
-                  <div className="flex flex-col items-center relative z-10">
-                    <span className="text-4xl font-black text-white tracking-tighter leading-none">
-                      {room.bhoomi_score}
-                    </span>
-                    <div className="flex gap-1 mt-2">
-                      {[1, 2, 3, 4].map(s => (
-                        <div key={s} className={`h-1 w-4 rounded-full ${room.bhoomi_score && room.bhoomi_score > (300 + s*150) ? 'bg-emerald-500' : 'bg-slate-700'}`}></div>
-                      ))}
-                    </div>
-                    <p className="text-[9px] font-bold text-slate-400 mt-2 uppercase tracking-widest">Asset Trust Index</p>
-                  </div>
+              {/* BHOOMI SCORE 2.0 (Dynamic Trust Algorithm) */}
+              {room && (
+                <div className="w-full lg:w-auto">
+                  <BhoomiScoreCard 
+                    isOwner={profile?.id === room.landlord_id}
+                    input={{
+                      landlord_kyc_verified: room.profiles?.kyc_verified || false,
+                      landlord_phone_verified: !!room.profiles?.phone,
+                      photos_count: room.photos?.length || 0,
+                      amenities_count: room.amenities?.length || 0,
+                      has_description: !!(room.description && room.description.length > 50),
+                      has_exact_coordinates: !!(room.latitude && room.longitude),
+                      has_night_video: videoCount > 0,
+                      tenant_reviews_count: reviews.length,
+                      avg_review_rating: reviews.length > 0 
+                        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+                        : 0,
+                      move_in_reports_completed: moveInCount
+                    }}
+                  />
+                  {profile && (
+                    <button 
+                      onClick={() => setIsReviewModalOpen(true)}
+                      className="mt-4 text-xs font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-600 transition-colors flex items-center gap-1.5 ml-8"
+                    >
+                      <MessageSquare size={14} /> Lived here? Add a review →
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -438,17 +491,16 @@ export default function RoomDetail() {
                 </div>
               </section>
 
-              {/* LOCAL MARKET TRENDS */}
               <section className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-surface-container-low">
                 <div className="flex flex-col gap-1 mb-6">
                   <h3 className="font-headline font-bold text-xl text-on-surface">Local Market Trends</h3>
-                  <p className="text-sm font-bold text-gray-400 uppercase tracking-tight">
+                  <p className="text-sm font-bold text-slate-500 mb-4">
                     Average {room.room_type} rent in {room.locality} over 12 months
                   </p>
                 </div>
                 <RentHistoryChart 
-                  locality={room.locality}
                   city={room.city}
+                  locality={room.locality}
                   roomType={room.room_type}
                   currentRent={room.rent_amount}
                 />
@@ -746,6 +798,7 @@ export default function RoomDetail() {
          profile={profile}
          initiateDeposit={initiateDeposit}
          processing={depositLoading}
+         currentTenant={currentTenant}
        />
 
     </div>
@@ -773,7 +826,8 @@ function DepositVaultModal({
   room, 
   profile, 
   initiateDeposit,
-  processing 
+  processing,
+  currentTenant
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
@@ -782,17 +836,18 @@ function DepositVaultModal({
   profile: any;
   initiateDeposit: any;
   processing: boolean;
+  currentTenant: any;
 }) {
   if (!isOpen) return null;
 
   const handlePay = async () => {
-    if (!profile) {
-      toast.error('Please login to pay deposit');
+    if (!profile || !currentTenant) {
+      toast.error('You must be registered as a tenant for this room to pay deposit');
       return;
     }
     
     await initiateDeposit({
-      tenantId: profile.id,
+      tenantId: currentTenant.id,
       landlordId: room.landlord_id,
       roomId: room.id,
       amount: amount
