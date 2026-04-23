@@ -7,11 +7,11 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
   CheckCircle2, ChevronLeft, ChevronRight, 
-  X, MapPin, Loader2, UploadCloud 
+  X, MapPin, Loader2, UploadCloud, ShieldAlert, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { FeatureGate } from '@/components/FeatureGate';
-import { UpgradePrompt } from '@/components/UpgradePrompt';
+import { RoomLimitGate } from '@/components/RoomLimitGate';
 import { UpgradeModal } from '@/components/UpgradeModal';
 
 // Fix for default Leaflet marker icon not showing in React Leaflet
@@ -57,12 +57,8 @@ const LocationMarker = ({ position, setPosition }: { position: L.LatLng, setPosi
  * ANALOGY: Filling out a detailed property listing form with a built-in map and photo album compiler.
  */
 export default function AddRoom() {
-  const { profile, user, plan } = useAuth();
+  const { profile, user } = useAuth();
   const navigate = useNavigate();
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-
-  const roomLimit = plan === 'starter' ? 3 : plan === 'pro' ? 15 : Infinity;
-  const isOverLimit = (profile?.rooms_count || 0) >= roomLimit;
 
   // Protect route for Landlords only
   useEffect(() => {
@@ -95,12 +91,18 @@ export default function AddRoom() {
     total_floors: '',
     latitude: 12.9716, // Default to Bengaluru
     longitude: 77.5946,
+    late_fee_pct: 5,
   });
 
   // Photo State
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Night View Video State
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+
 
   // Derive coordinates for Leaflet
   const mapPosition = L.latLng(form.latitude, form.longitude);
@@ -129,7 +131,34 @@ export default function AddRoom() {
     }
   };
 
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const validTypes = ['video/mp4', 'video/quicktime', 'video/webm'];
+      
+      if (!validTypes.includes(file.type)) {
+        toast.error('Only MP4, MOV, and WebM are allowed');
+        return;
+      }
+
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error('Video must be less than 50MB');
+        return;
+      }
+
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeVideo = () => {
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    setVideoFile(null);
+    setVideoPreview(null);
+  };
+
   const removePhoto = (index: number) => {
+
     const newFiles = [...files];
     newFiles.splice(index, 1);
     setFiles(newFiles);
@@ -263,6 +292,26 @@ export default function AddRoom() {
       setUploadProgress(Math.round((completed / files.length) * 100));
     }
 
+    // 1.5 Upload Night View Video
+    let streetVideoUrl = null;
+    if (videoFile) {
+      const fileExt = videoFile.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}-night-view.${fileExt}`;
+      
+      const { data: vData, error: vError } = await supabase.storage
+          .from('room-videos')
+          .upload(fileName, videoFile);
+
+      if (vError) {
+        toast.error('Failed to upload video');
+      } else if (vData) {
+        const { data: vPublicUrl } = supabase.storage
+          .from('room-videos')
+          .getPublicUrl(fileName);
+        streetVideoUrl = vPublicUrl.publicUrl;
+      }
+    }
+
     // 2. Insert Room
     // 1. Validate required fields
     const finalDescription = `${form.description}\n\nGender Preference: ${form.gender_preference}\nFloor: ${form.floor_number} of ${form.total_floors}`;
@@ -280,9 +329,11 @@ export default function AddRoom() {
         available: true,
         amenities: form.amenities,
         photos: uploadedUrls,
+        street_video_url: streetVideoUrl,
         furnished: form.furnished,
         latitude: form.latitude,
         longitude: form.longitude,
+        late_fee_pct: form.late_fee_pct,
         description: finalDescription
       })
       .select()
@@ -338,56 +389,11 @@ export default function AddRoom() {
     );
   }
 
-  if (isOverLimit) {
-    return (
-      <div className="max-w-3xl mx-auto py-20 px-4">
-        <div className="bg-white rounded-[2.5rem] p-10 md:p-16 border border-slate-100 shadow-2xl text-center">
-          <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mx-auto mb-8 ring-8 ring-amber-50/50">
-            <ShieldAlert className="w-10 h-10" />
-          </div>
-          <h1 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">
-            You've reached your {roomLimit}-room limit
-          </h1>
-          <p className="text-slate-500 font-medium mb-10 max-w-md mx-auto">
-            The <span className="text-slate-900 font-bold uppercase tracking-wider">{plan}</span> plan supports up to {roomLimit} rooms. Upgrade to continue growing your portfolio.
-          </p>
 
-          <div className="grid grid-cols-3 gap-4 mb-10 max-w-lg mx-auto">
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-              <div className="text-[10px] font-black text-slate-400 uppercase mb-1">Starter</div>
-              <div className="text-xl font-black">3 Rooms</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 ring-2 ring-emerald-500/20 scale-105">
-              <div className="text-[10px] font-black text-emerald-600 uppercase mb-1">Pro</div>
-              <div className="text-xl font-black">15 Rooms</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-              <div className="text-[10px] font-black text-slate-400 uppercase mb-1">Business</div>
-              <div className="text-xl font-black">∞ Rooms</div>
-            </div>
-          </div>
-
-          <button 
-            onClick={() => setIsUpgradeModalOpen(true)}
-            className="w-full max-w-sm py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all text-sm uppercase tracking-widest"
-          >
-            Upgrade for ₹499/mo to add more rooms →
-          </button>
-          
-          <button 
-            onClick={() => navigate('/dashboard')}
-            className="mt-6 text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors"
-          >
-            Return to Dashboard
-          </button>
-        </div>
-        <UpgradeModal isOpen={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} targetPlan="pro" />
-      </div>
-    );
-  }
 
   return (
-    <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6">
+    <RoomLimitGate>
+      <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6">
 
       
       {/* Progress Indicator */}
@@ -535,22 +541,50 @@ export default function AddRoom() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-3">Gender Preference</label>
-                <div className="flex gap-3">
-                  {GENDER_PREFS.map(pref => (
-                    <button
-                      key={pref}
-                      onClick={() => setForm({...form, gender_preference: pref})}
-                      className={`flex-1 py-3 min-h-[44px] rounded-xl font-bold border-2 transition-all text-sm ${
-                        form.gender_preference === pref ? 'border-brand bg-emerald-50 text-brand' : 'border-slate-200 text-slate-500 hover:border-slate-300'
-                      }`}
-                    >
-                      {pref}
-                    </button>
-                  ))}
+
+              <FeatureGate 
+                feature="late_fees" 
+                requiredPlan="pro"
+                fallback={
+                  <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl opacity-70 cursor-not-allowed group relative">
+                    <div className="flex justify-between items-center">
+                       <div>
+                         <label className="block text-sm font-bold text-slate-500 mb-1">Late Fee Percentage</label>
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Automatic charge after 5 days</p>
+                       </div>
+                       <div className="text-xl font-black text-slate-400">5%</div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 rounded-2xl">
+                       <p className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                         <Sparkles size={14} /> Upgrade to Pro to enable
+                       </p>
+                    </div>
+                  </div>
+                }
+              >
+                <div className="bg-indigo-50 border border-indigo-100 p-5 rounded-2xl">
+                  <div className="flex justify-between items-center mb-3">
+                    <div>
+                      <label className="block text-sm font-bold text-indigo-900 mb-1">Late Fee Percentage</label>
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Applied automatically after 5 days</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-indigo-200">
+                      <input 
+                        type="number"
+                        min="0"
+                        max="20"
+                        value={form.late_fee_pct}
+                        onChange={(e) => setForm({...form, late_fee_pct: parseInt(e.target.value) || 0})}
+                        className="w-12 text-lg font-black text-indigo-600 outline-none"
+                      />
+                      <span className="text-lg font-black text-indigo-400">%</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] font-medium text-indigo-600/60 leading-tight">
+                    * REHWAS will automatically add this fee to the ledger and notify the tenant if rent is unpaid 5 days past due date.
+                  </p>
                 </div>
-              </div>
+              </FeatureGate>
 
             </div>
           </div>
@@ -787,6 +821,55 @@ export default function AddRoom() {
                 </div>
               </div>
             )}
+
+            <hr className="border-slate-100 my-8" />
+
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-bold text-dark">Night-time Street View (Optional but recommended)</h3>
+                <p className="text-slate-500 text-xs mt-1">
+                  Record a 15–60 second video at night showing: the street outside, building entrance, lighting, and nearby landmarks. 
+                  Listings with night videos get 3x more tenant inquiries.
+                </p>
+              </div>
+
+              {!videoPreview ? (
+                <div className="relative border-2 border-dashed border-slate-300 rounded-3xl p-8 text-center hover:border-brand transition-colors bg-slate-50 cursor-pointer overflow-hidden group">
+                  <input 
+                    type="file" 
+                    accept="video/mp4,video/quicktime,video/webm"
+                    onChange={handleVideoChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-3 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-colors">
+                    <span className="material-symbols-outlined">video_library</span>
+                  </div>
+                  <div className="text-dark font-bold text-sm">Upload Night View Video</div>
+                  <div className="text-slate-400 text-[10px] uppercase font-bold mt-1 tracking-wider">MP4, MOV, WEBM up to 50MB</div>
+                </div>
+              ) : (
+                <div className="relative rounded-3xl overflow-hidden border border-slate-200 aspect-video bg-black group">
+                  <video src={videoPreview} className="w-full h-full" controls />
+                  <button 
+                    onClick={removeVideo}
+                    className="absolute top-4 right-4 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-xl z-20"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-white/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Preview
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3">
+                <span className="material-symbols-outlined text-amber-600">lightbulb</span>
+                <p className="text-xs text-amber-800 font-medium leading-relaxed">
+                  <strong>Best time to record:</strong> 8–10 PM on a weekday. 
+                  Walk slowly and narrate: "This is the main gate, security guard is present 24/7..."
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -820,6 +903,7 @@ export default function AddRoom() {
         )}
       </div>
 
-    </div>
+      </div>
+    </RoomLimitGate>
   );
 }

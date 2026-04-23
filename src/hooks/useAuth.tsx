@@ -37,16 +37,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    if (!error && data) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Profile doesn't exist yet, return null so Login.tsx triggers onboarding
+          return null;
+        }
+        throw error;
+      }
+      
       setProfile(data);
       return data;
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+      return null;
     }
-    return null;
   };
 
   useEffect(() => {
@@ -132,13 +143,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error };
   };
   const signInWithEmail = async (email: string) => {
+    // Demo Mode Bypass
+    if (email === 'test@rehwas.com') {
+      return { error: null };
+    }
+    
     const { error } = await supabase.auth.signInWithOtp({ email });
     return { error };
   };
+
   const verifyOtp = async (identifier: string, token: string, type: 'sms' | 'email' | 'magiclink' = 'sms') => {
+    // Demo Mode Bypass
+    if (identifier === 'test@rehwas.com' && token === '123456') {
+      console.log('🧪 Demo Mode Bypass Triggered');
+      
+      const testEmail = 'test@rehwas.com';
+      const testPassword = 'RehwasTest@123'; // Stronger password to satisfy complexity rules
+
+      // 1. Try to sign in
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: testEmail,
+        password: testPassword
+      });
+
+      if (!signInError && signInData.user) {
+        console.log('🧪 Demo Login Successful');
+        const p = await fetchProfile(signInData.user.id);
+        return { error: null, profile: p };
+      }
+
+      console.warn('🧪 Demo Login Failed, attempting automatic Sign Up...', signInError?.message);
+
+      // 2. If login fails, try to sign up
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: testEmail,
+        password: testPassword,
+        options: {
+          data: { full_name: 'Test User' }
+        }
+      });
+
+      if (!signUpError && signUpData.user) {
+        console.log('🧪 Demo Sign Up Successful');
+        const p = await fetchProfile(signUpData.user.id);
+        return { error: null, profile: p };
+      }
+
+      console.error('🧪 Demo Mode totally failed:', signUpError?.message || signInError?.message);
+      return { error: signUpError || signInError, profile: null };
+    }
+
     const params: any = { token, type };
     if (type === 'sms') params.phone = identifier;
     else params.email = identifier;
+    
     const { data, error } = await supabase.auth.verifyOtp(params);
     if (error) return { error, profile: null };
     if (data.user) {

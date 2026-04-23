@@ -64,6 +64,12 @@ export default function Discover() {
     if (minRentParam) {
       result = result.filter(r => r.rent_amount >= Number(minRentParam));
     }
+
+    // Night view filter
+    const nightViewParam = searchParams.get('has_night_view');
+    if (nightViewParam === 'true') {
+      result = result.filter(r => r.street_video_url !== null && r.street_video_url !== undefined);
+    }
     
     return result;
   }, [rooms, searchQuery, searchParams]);

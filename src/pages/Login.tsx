@@ -103,7 +103,7 @@ export default function Login() {
     setLoading(false);
     
     if (error) {
-      toast.error('Invalid code. Please try again.');
+      toast.error(error.message || 'Invalid code. Please try again.');
     } else {
       toast.success('Logged in successfully!');
       // If no profile exists yet (new user) or name is missing, go to onboarding
@@ -234,8 +234,23 @@ export default function Login() {
                   </button>
                </div>
 
-               <div className="pt-4 text-center">
+               <div className="pt-4 text-center space-y-4">
                   <p className="text-slate-400 text-sm font-medium">Already have an account? <span onClick={() => setStep(1)} className="text-brand font-bold cursor-pointer hover:underline underline-offset-4">Log in here</span></p>
+                  
+                  <div className="pt-4 border-t border-slate-100">
+                     <button 
+                        onClick={() => {
+                           setRole('tenant');
+                           setEmail('test@rehwas.com');
+                           setMethod('email');
+                           setStep(1);
+                           toast('Demo credentials pre-filled!', { icon: '🧪' });
+                        }}
+                        className="text-[10px] font-black text-slate-300 hover:text-brand uppercase tracking-[0.2em] transition-all"
+                     >
+                        — Try Demo Mode —
+                     </button>
+                  </div>
                </div>
             </div>
           )}

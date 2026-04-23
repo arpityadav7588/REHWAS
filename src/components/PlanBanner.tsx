@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Sparkles, AlertCircle, ArrowRight, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,15 +38,12 @@ export const PlanBanner = () => {
     else if (profile?.trial_ends_at && !isOnTrial && isStarter) {
       type = 'trial_expired';
     } 
-    // TYPE 3: Room limit reached
     else if (isStarter && roomsCount >= 3) {
       type = 'limit_reached';
     } 
-    // TYPE 4: Near room limit
     else if (isStarter && roomsCount === 2) {
       type = 'near_limit';
     } 
-    // TYPE 2: Trial active
     else if (isOnTrial && trialDaysLeft > 7) {
       type = 'trial_active';
     }
@@ -68,7 +65,6 @@ export const PlanBanner = () => {
 
   const handleDismiss = () => {
     if (bannerType) {
-      // Dismiss for 24 hours
       const tomorrow = new Date().getTime() + (24 * 60 * 60 * 1000);
       localStorage.setItem(`dismissed_banner_${bannerType}`, tomorrow.toString());
       setIsVisible(false);
@@ -108,19 +104,20 @@ export const PlanBanner = () => {
       text: `You're on a Pro trial — ${trialDaysLeft} days remaining. Explore all features free.`,
       cta: <Link to="/pricing" className="text-white hover:underline text-xs font-black flex items-center gap-1">See what's included <ArrowRight size={12} /></Link>
     }
-  }[bannerType as keyof typeof config];
+  };
 
-  if (!config) return null;
+  const currentConfig = config[bannerType as keyof typeof config];
+  if (!currentConfig) return null;
 
   return (
     <>
-      <div className={`${config.bg} px-6 py-3 rounded-2xl shadow-xl shadow-slate-900/10 flex items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-300 mb-6`}>
+      <div className={`${currentConfig.bg} px-6 py-3 rounded-2xl shadow-xl shadow-slate-900/10 flex items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-300 mb-6`}>
         <div className="flex items-center gap-3">
-          <div className="flex-shrink-0">{config.icon}</div>
-          <p className="text-sm font-black text-white tracking-tight">{config.text}</p>
+          <div className="flex-shrink-0">{currentConfig.icon}</div>
+          <p className="text-sm font-black text-white tracking-tight">{currentConfig.text}</p>
         </div>
         <div className="flex items-center gap-4">
-          {config.cta}
+          {currentConfig.cta}
           <button onClick={handleDismiss} className="text-white/60 hover:text-white transition-colors p-1">
             <X size={18} />
           </button>

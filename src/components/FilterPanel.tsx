@@ -14,6 +14,7 @@ export const FilterPanel = () => {
   const [roomType, setRoomType] = useState(searchParams.get('room_type') || 'All');
   const [furnished, setFurnished] = useState(searchParams.get('furnished') || 'Any');
   const [gender, setGender] = useState(searchParams.get('gender') || 'Any');
+  const [hasNightView, setHasNightView] = useState(searchParams.get('has_night_view') === 'true');
 
   useEffect(() => {
     setCity(searchParams.get('city') || 'Bengaluru');
@@ -22,6 +23,7 @@ export const FilterPanel = () => {
     setRoomType(searchParams.get('room_type') || 'All');
     setFurnished(searchParams.get('furnished') || 'Any');
     setGender(searchParams.get('gender') || 'Any');
+    setHasNightView(searchParams.get('has_night_view') === 'true');
   }, [searchParams]);
 
   /**
@@ -37,6 +39,7 @@ export const FilterPanel = () => {
     if (roomType !== 'All') params.set('room_type', roomType);
     if (furnished !== 'Any') params.set('furnished', furnished);
     if (gender !== 'Any') params.set('gender', gender);
+    if (hasNightView) params.set('has_night_view', 'true');
     
     setSearchParams(params);
   };
@@ -115,6 +118,26 @@ export const FilterPanel = () => {
             </label>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer select-none group">
+          <div className={`w-10 h-6 rounded-full transition-colors relative ${hasNightView ? 'bg-slate-900' : 'bg-gray-200'}`}>
+            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${hasNightView ? 'left-5' : 'left-1'}`}></div>
+          </div>
+          <input 
+            type="checkbox" 
+            checked={hasNightView} 
+            onChange={(e) => setHasNightView(e.target.checked)} 
+            className="hidden" 
+          />
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+              🌙 Has Night View
+            </span>
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Verified safety video</span>
+          </div>
+        </label>
       </div>
 
       <div className="flex flex-col gap-3 mt-3">

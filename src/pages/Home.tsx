@@ -1,11 +1,8 @@
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  ArrowRight, Search, MessageSquare, Home as HomeIcon, Building2, 
-  ShieldCheck, Users, FileText, Map, BookOpen, Zap, 
-  BarChart2, Calendar, Check, Star, Smartphone, Shield
+  ArrowRight, MessageSquare, Check, Star, Smartphone, Shield,
+  Zap, BookOpen, FileText, Calendar, BarChart2, Map, Building2, Users
 } from 'lucide-react';
-import { usePlatformStats } from '@/hooks/usePlatformStats';
 
 /**
  * SAAS MARKETING PRINCIPLE: SELL THE OUTCOME, NOT THE FEATURE.

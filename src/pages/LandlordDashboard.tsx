@@ -11,18 +11,15 @@ import { RoomCard } from '@/components/RoomCard';
 import type { Tenant, RentLedger } from '@/types';
 import toast from 'react-hot-toast';
 import { format, parseISO, subMonths } from 'date-fns';
-import { 
-  Home, Users, BookOpen, Bell, Plus, IndianRupee, Key, 
-  DoorOpen, Edit, Trash2, ShieldAlert, Phone, Send, FileText, Download, X,
-  Camera
-} from 'lucide-react';
-import { DigitalDossier } from '@/components/DigitalDossier';
-import { VerificationCenter } from '@/components/VerificationCenter';
-import { TenantRentScore } from '@/components/TenantRentScore';
+import { useSubscription } from '@/hooks/useSubscription';
 import { FeatureGate } from '@/components/FeatureGate';
-import { OnboardingChecklist } from '@/components/OnboardingChecklist';
-import { EmptyState } from '@/components/EmptyState';
-import { Sparkles, TrendingUp, LayoutDashboard } from 'lucide-react';
+import { BoostModal } from '@/components/BoostModal';
+import { RentAgreementModal } from '@/components/RentAgreementModal';
+import { useRooms as useRoomsHook } from '@/hooks/useRooms';
+import { Users, Home, Phone, FileText, Camera, ShieldAlert, Share2, Rocket, Edit, Trash2, Plus, Key, DoorOpen, BookOpen, Bell, TrendingUp, Sparkles, ExternalLink, ShieldCheck, Lock, IndianRupee, Zap, Wrench, Droplets, Calculator, History, ChevronDown, ChevronUp, Receipt, Check, X, Info, Scale } from 'lucide-react';
+import { VacancyBleedCard } from '@/components/VacancyBleedCard';
+import { generateITRExport, getFinancialYear } from '@/lib/itrExport';
+import { AlertCircle, FileSpreadsheet } from 'lucide-react';
 
 
 /**
@@ -50,9 +47,10 @@ interface RentLedgerExtended extends RentLedger {
  */
 export default function LandlordDashboard() {
   const navigate = useNavigate();
-  const { profile, loading: authLoading } = useAuth();
+  const { profile, loading: authLoading, updateProfile } = useAuth();
   const { rooms, fetchRooms, deleteRoom, updateRoom, loading: roomsLoading } = useRooms();
   const { fetchLedger, getMonthlyTotal, createLedgerEntries, updateLedgerEntry, applyBulkUtilityBill } = useLedger();
+  const { hasPlan } = useSubscription();
 
   // Selected Tab State
   const [activeTab, setActiveTab] = useState<'rooms' | 'tenants' | 'ledger' | 'reminders' | 'pl'>('rooms');
@@ -70,16 +68,86 @@ export default function LandlordDashboard() {
   const [expenseRoomId, setExpenseRoomId] = useState<string | null>(null);
   const [selectedMoveInTenant, setSelectedMoveInTenant] = useState<any>(null);
   const [isMoveInReportModalOpen, setIsMoveInReportModalOpen] = useState(false);
+  const [selectedDepositTenant, setSelectedDepositTenant] = useState<any>(null);
 
   // Dossier State
   const [selectedDossierTenant, setSelectedDossierTenant] = useState<any>(null);
 
   // Utility Billing Modal States
+  const { applySplit } = useLedger();
   const [isUtilModalOpen, setIsUtilModalOpen] = useState(false);
-  const [utilTotalAmount, setUtilTotalAmount] = useState('');
   const [utilMonth, setUtilMonth] = useState(format(new Date(), 'MMM yyyy'));
   const [selectedTenantsForUtil, setSelectedTenantsForUtil] = useState<string[]>([]);
   const [applyingUtil, setApplyingUtil] = useState(false);
+  const [billItems, setBillItems] = useState([
+    { id: 'elec', label: 'Electricity Bill', amount: 0, enabled: true, icon: Zap, helper: 'Enter total building bill from MSEB/BESCOM/BSES' },
+    { id: 'maint', label: 'Maintenance Fee', amount: 0, enabled: false, icon: Wrench, helper: 'Society maintenance, security, cleaning charges' },
+    { id: 'water', label: 'Water Bill', amount: 0, enabled: false, icon: Droplets, helper: 'Water tanker or municipal water charges' },
+  ]);
+  const [customItems, setCustomItems] = useState<{ id: string; label: string; amount: number }[]>([]);
+  const [splitMethod, setSplitMethod] = useState<'equal' | 'size'>('equal');
+  const [showHistory, setShowHistory] = useState(false);
+  const [previousSplits, setPreviousSplits] = useState<any[]>([]);
+
+  // Boost & Agreement States
+  const [selectedBoostRoom, setSelectedBoostRoom] = useState<any>(null);
+  const [isBoostModalOpen, setIsBoostModalOpen] = useState(false);
+  const [selectedAgreementTenant, setSelectedAgreementTenant] = useState<any>(null);
+  const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(false);
+
+  // ITR Export State
+  const [selectedFY, setSelectedFY] = useState(getFinancialYear().label);
+  const [generatingITR, setGeneratingITR] = useState(false);
+
+  const fyOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const options = [];
+    for (let i = 0; i < 3; i++) {
+      const year = currentYear - i;
+      options.push(`FY ${year}-${(year + 1).toString().slice(-2)}`);
+      options.push(`FY ${year - 1}-${year.toString().slice(-2)}`);
+    }
+    return Array.from(new Set(options)).sort().reverse().slice(0, 5);
+  }, []);
+
+  // Fetch previous splits history
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!profile || !isUtilModalOpen) return;
+      
+      const { data, error } = await supabase
+        .from('rent_ledger')
+        .select(`
+          month, 
+          utility_amount, 
+          tenants(profiles(full_name))
+        `)
+        .eq('landlord_id', profile.id)
+        .gt('utility_amount', 0)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (data) {
+        // Group by month to show "Cycles"
+        const grouped = data.reduce((acc: any, curr: any) => {
+          const key = curr.month;
+          if (!acc[key]) acc[key] = { month: key, totalPerTenant: curr.utility_amount, count: 0, names: [] };
+          acc[key].count++;
+          if (curr.tenants?.profiles?.full_name) acc[key].names.push(curr.tenants.profiles.full_name);
+          return acc;
+        }, {});
+        setPreviousSplits(Object.values(grouped));
+      }
+    };
+    
+    if (isUtilModalOpen) fetchHistory();
+  }, [isUtilModalOpen, profile]);
+
+  const totalBillAmount = useMemo(() => {
+    const standardTotal = billItems.reduce((sum, item) => sum + (item.enabled ? (Number(item.amount) || 0) : 0), 0);
+    const customTotal = customItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    return standardTotal + customTotal;
+  }, [billItems, customItems]);
 
   // Add Tenant Modal States
   const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
@@ -91,6 +159,7 @@ export default function LandlordDashboard() {
   const [addingTenant, setAddingTenant] = useState(false);
   const [foundTenantProfileId, setFoundTenantProfileId] = useState<string | null>(null);
   const [checkingTenant, setCheckingTenant] = useState(false);
+  const [tenantCVData, setTenantCVData] = useState<any>(null);
 
 
   // New Expense State
@@ -99,7 +168,6 @@ export default function LandlordDashboard() {
   const [expenseDescription, setExpenseDescription] = useState('');
   const [expenseDate, setExpenseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [addingExpense, setAddingExpense] = useState(false);
-  const [showOnboardingManual, setShowOnboardingManual] = useState(false);
 
   // Load Everything
   const loadDashboardData = async () => {
@@ -202,15 +270,15 @@ export default function LandlordDashboard() {
               label: (context: any) => ` ₹${context.raw.toLocaleString('en-IN')}`
             }
           }
-        },
-        scales: {
-          x: { grid: { display: false }, border: { display: false } },
-          y: { 
-            grid: { color: '#f1f5f9' }, 
-            border: { display: false },
-            ticks: {
-              callback: (value: any) => '₹' + value.toLocaleString('en-IN')
-            }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, border: { display: false } },
+        y: { 
+          grid: { color: '#f1f5f9' }, 
+          border: { display: false },
+          ticks: {
+            callback: (value: any) => '₹' + value.toLocaleString('en-IN')
           }
         }
       }
@@ -251,6 +319,25 @@ export default function LandlordDashboard() {
   const vacantCount = useMemo(() => landlordRooms.filter(r => r.available).length, [landlordRooms]);
   const vacantRoomsList = useMemo(() => landlordRooms.filter(r => r.available), [landlordRooms]);
 
+  const totalBleedPerDay = useMemo(() => 
+    vacantRoomsList.reduce((acc, r) => acc + Math.round((r.expected_rent || r.rent_amount) / 30), 0)
+  , [vacantRoomsList]);
+
+  // Reconciliation: Fix rooms that are available but missing vacant_since
+  useEffect(() => {
+    const fixMissingVacantSince = async () => {
+      const missing = vacantRoomsList.filter(r => !r.vacant_since);
+      if (missing.length > 0) {
+        console.log('Reconciling vacancy timestamps for', missing.length, 'rooms');
+        for (const room of missing) {
+          await updateRoom(room.id, { available: true }); // Triggers our new hook logic
+        }
+        loadDashboardData();
+      }
+    };
+    if (vacantRoomsList.length > 0) fixMissingVacantSince();
+  }, [vacantRoomsList.length]);
+
   // Reminders - unpaid for current month
   const unpaidThisMonth = useMemo(() => {
     const currentMonth = format(new Date(), 'MMM yyyy');
@@ -273,11 +360,30 @@ export default function LandlordDashboard() {
   };
 
   const handleEndTenancy = async (tenantId: string, roomId: string) => {
-    if (window.confirm('Are you sure you want to end this tenancy?')) {
-      await supabase.from('tenants').update({ status: 'past', move_out_date: format(new Date(), 'yyyy-MM-dd') }).eq('id', tenantId);
-      await updateRoom(roomId, { available: true });
-      toast.success('Tenancy ended. Room is now vacant.');
-      loadDashboardData();
+    if (window.confirm('Are you sure you want to end this tenancy? This will initiate a Move-out Inspection Report.')) {
+      setLoading(true);
+      try {
+        const { data: newReport, error: rErr } = await supabase
+          .from('move_in_reports')
+          .insert([{
+            tenant_id: tenantId,
+            room_id: roomId,
+            landlord_id: profile!.id,
+            report_status: 'pending_landlord',
+            type: 'move_out'
+          }])
+          .select()
+          .single();
+
+        if (rErr) throw rErr;
+
+        navigate(`/move-in-report/${newReport.id}`);
+        toast.success('Move-out Report initiated! 📋');
+      } catch (err: any) {
+        toast.error('Failed to initiate move-out: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
     }
   };
   
@@ -286,17 +392,33 @@ export default function LandlordDashboard() {
     const lookupTenant = async () => {
       if (tenantPhone.length === 10) {
         setCheckingTenant(true);
-        const { data } = await supabase.from('profiles').select('id, full_name').eq('phone', tenantPhone).single();
-        if (data) {
-          setFoundTenantProfileId(data.id);
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .eq('phone', tenantPhone)
+          .single();
+
+        if (profileData) {
+          setFoundTenantProfileId(profileData.id);
           // Auto-fill name if found
-          if (!tenantName) setTenantName(data.full_name);
+          if (!tenantName) setTenantName(profileData.full_name);
+
+          // Check if they have a Rental CV
+          const { data: cvData } = await supabase
+            .from('tenant_cv')
+            .select('*')
+            .eq('tenant_profile_id', profileData.id)
+            .single();
+          
+          setTenantCVData(cvData);
         } else {
           setFoundTenantProfileId(null);
+          setTenantCVData(null);
         }
         setCheckingTenant(false);
       } else {
         setFoundTenantProfileId(null);
+        setTenantCVData(null);
       }
     };
     lookupTenant();
@@ -441,32 +563,6 @@ export default function LandlordDashboard() {
 
       {/* TAB CONTENT AREAS */}
 
-      {/* TAB 5: P&L DASHBOARD */}
-      {activeTab === 'pl' && (
-        <FeatureGate feature="pl_dashboard" requiredPlan="pro">
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-            {plSummary.length === 0 ? (
-              <EmptyState 
-                illustration="finance"
-                title="No financial data yet"
-                description="Add expenses like maintenance, taxes, and repairs to see your monthly P&L. Rent income is tracked automatically."
-                ctaText="Add an expense"
-                ctaAction={() => {
-                  setExpenseRoomId(landlordRooms[0]?.id || null);
-                  setIsExpenseModalOpen(true);
-                }}
-              />
-            ) : (
-              <div className="bg-white p-10 rounded-3xl border border-gray-100 shadow-sm text-center">
-                 <TrendingUp size={48} className="text-emerald-600 mx-auto mb-4" />
-                 <h2 className="text-2xl font-black text-gray-900">Profit & Loss Dashboard</h2>
-                 <p className="text-gray-500">Track your property yields and expenses automatically in real-time.</p>
-              </div>
-            )}
-          </div>
-        </FeatureGate>
-      )}
-
       {/* TAB 1: MY ROOMS */}
       {activeTab === 'rooms' && (
         <div className="flex flex-col gap-6">
@@ -479,38 +575,84 @@ export default function LandlordDashboard() {
                 ctaHref="/add-room"
               />
             ) : (
-             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-               {landlordRooms.map(room => (
-                 <div key={room.id} className="relative group">
-                    <RoomCard room={room} />
-                    {/* Management Overlay Controls */}
-                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => navigate(`/add-room?edit=${room.id}`)}
-                        className="bg-white/95 backdrop-blur-sm p-2 rounded-xl text-gray-600 hover:text-blue-600 shadow-md hover:scale-110 transition-all font-bold"
-                        title="Edit Room"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleToggleVacancy(room.id, room.available)}
-                        className={`bg-white/95 backdrop-blur-sm p-2 rounded-xl shadow-md hover:scale-110 transition-all font-bold ${room.available ? 'text-gray-600 hover:text-orange-600' : 'text-orange-600 hover:text-green-600'}`}
-                        title={room.available ? "Mark Occupied" : "Mark Vacant"}
-                      >
-                        {room.available ? <Key size={16} /> : <DoorOpen size={16} />}
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteRoom(room.id, room.title)}
-                        className="bg-white/95 backdrop-blur-sm p-2 rounded-xl text-gray-600 hover:text-red-600 shadow-md hover:scale-110 transition-all font-bold md:hidden group-hover:block"
-                        title="Delete Room"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+              <div className="flex flex-col gap-6">
+                {/* VACANCY BLEED SUMMARY BANNER */}
+                {vacantCount > 0 && (
+                  <div className="bg-rose-600 rounded-[2rem] p-6 text-white flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl shadow-rose-200 animate-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                        <AlertTriangle size={24} className="animate-pulse" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black tracking-tight leading-none">{vacantCount} rooms are currently vacant</h3>
+                        <p className="text-white/70 text-[10px] font-black uppercase tracking-widest mt-1.5">You are losing ₹{totalBleedPerDay.toLocaleString()} in potential revenue every day</p>
+                      </div>
                     </div>
-                 </div>
-               ))}
-             </div>
-           )}
+                    <div className="flex gap-2">
+                       <button 
+                        onClick={() => navigate('/add-room')}
+                        className="bg-white text-rose-600 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-50 transition-all active:scale-95"
+                       >
+                         Manage Listings
+                       </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {landlordRooms.map(room => (
+                    <div key={room.id} className="relative group">
+                      {room.available ? (
+                        <VacancyBleedCard 
+                          room={room} 
+                          onBoost={() => {
+                            setSelectedBoostRoom(room);
+                            setIsBoostModalOpen(true);
+                          }} 
+                        />
+                      ) : (
+                        <RoomCard room={room} />
+                      )}
+                      
+                      {/* Management Overlay Controls */}
+                      <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        <button 
+                          onClick={() => {
+                            setSelectedBoostRoom(room);
+                            setIsBoostModalOpen(true);
+                          }}
+                          className="bg-white/95 backdrop-blur-sm p-2 rounded-xl text-emerald-600 hover:text-emerald-700 shadow-md hover:scale-110 transition-all font-bold"
+                          title="Boost Listing"
+                        >
+                          <Rocket size={16} />
+                        </button>
+                        <button 
+                          onClick={() => navigate(`/add-room?edit=${room.id}`)}
+                          className="bg-white/95 backdrop-blur-sm p-2 rounded-xl text-gray-600 hover:text-blue-600 shadow-md hover:scale-110 transition-all font-bold"
+                          title="Edit Room"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleToggleVacancy(room.id, room.available)}
+                          className={`bg-white/95 backdrop-blur-sm p-2 rounded-xl shadow-md hover:scale-110 transition-all font-bold ${room.available ? 'text-gray-600 hover:text-orange-600' : 'text-orange-600 hover:text-green-600'}`}
+                          title={room.available ? "Mark Occupied" : "Mark Vacant"}
+                        >
+                          {room.available ? <Key size={16} /> : <DoorOpen size={16} />}
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteRoom(room.id, room.title)}
+                          className="bg-white/95 backdrop-blur-sm p-2 rounded-xl text-gray-600 hover:text-red-600 shadow-md hover:scale-110 transition-all font-bold md:hidden group-hover:block"
+                          title="Delete Room"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
         </div>
       )}
 
@@ -537,7 +679,7 @@ export default function LandlordDashboard() {
                    <tr className="bg-gray-50/80 border-b border-gray-200 font-bold text-sm text-gray-500 uppercase tracking-wider">
                      <th className="p-5">Tenant Name</th>
                      <th className="p-5">Room Name</th>
-                     <th className="p-5">Move-In Date</th>
+                     <th className="p-5">Deposit Status</th>
                      <th className="p-5">Rent Amount</th>
                      <th className="p-5 text-right">Actions</th>
                    </tr>
@@ -560,21 +702,57 @@ export default function LandlordDashboard() {
                            {t.rooms?.title || 'Unknown Room'}
                         </td>
                         <td className="p-5">
-                           {format(parseISO(t.move_in_date), 'MMM dd, yyyy')}
-                        </td>
+                            {/* Mocking Deposit Status - In Phase 3 this will come from deposit_escrow table */}
+                            {t.id.length % 2 === 0 ? (
+                              <button 
+                                onClick={() => setSelectedDepositTenant(t)}
+                                className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-emerald-100 transition-colors"
+                              >
+                                <Lock size={12} className="fill-emerald-400" /> Held by REHWAS
+                              </button>
+                            ) : (
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-100 text-[10px] font-black uppercase tracking-widest w-fit">
+                                  <ShieldAlert size={12} /> Not Secured
+                                </div>
+                                <button className="text-[10px] font-bold text-indigo-600 hover:underline text-left pl-1">Ask to secure deposit →</button>
+                              </div>
+                            )}
+                         </td>
                         <td className="p-5 font-extrabold text-dark text-lg">₹{t.rent_amount.toLocaleString()}</td>
                         <td className="p-5 text-right flex items-center justify-end gap-2">
                            <button 
-                             onClick={() => {
-                               setSelectedMoveInTenant({
-                                 id: t.id,
-                                 profileId: t.tenant_profile_id,
-                                 tenantName: t.profiles?.full_name || 'Tenant',
-                                 roomTitle: t.rooms?.title || 'Room',
-                                 roomId: t.room_id,
-                                 landlordId: profile?.id
-                               });
-                               setIsMoveInReportModalOpen(true);
+                             onClick={async () => {
+                               // Check if a report already exists for this tenant
+                               const { data: existingReport } = await supabase
+                                 .from('move_in_reports')
+                                 .select('id')
+                                 .eq('tenant_id', t.id)
+                                 .eq('type', 'move_in')
+                                 .maybeSingle();
+
+                               if (existingReport) {
+                                 navigate(`/move-in-report/${existingReport.id}`);
+                               } else {
+                                 // Create a new pending report
+                                 const { data: newReport, error } = await supabase
+                                   .from('move_in_reports')
+                                   .insert([{
+                                     tenant_id: t.id,
+                                     room_id: t.room_id,
+                                     landlord_id: profile!.id,
+                                     report_status: 'pending_landlord',
+                                     type: 'move_in'
+                                   }])
+                                   .select()
+                                   .single();
+
+                                 if (error) {
+                                   toast.error('Failed to initiate report');
+                                   return;
+                                 }
+                                 navigate(`/move-in-report/${newReport.id}`);
+                               }
                              }}
                              className="text-indigo-600 hover:text-indigo-700 font-bold text-xs bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition-all border border-indigo-100 flex items-center gap-2"
                            >
@@ -598,6 +776,32 @@ export default function LandlordDashboard() {
                                <FileText size={14} /> Export Dossier
                              </button>
                            </FeatureGate>
+                           <button 
+                             onClick={() => {
+                               setSelectedAgreementTenant({
+                                 tenantName: t.profiles?.full_name || 'Tenant',
+                                 tenantPhone: t.profiles?.phone || '',
+                                 tenantAddress: '', // To be filled by user
+                                 landlordName: profile?.full_name || '',
+                                 landlordAddress: '', // To be filled by user
+                                 landlordPhone: profile?.phone || '',
+                                 propertyAddress: t.rooms?.title || '',
+                                 rentAmount: t.rent_amount,
+                                 depositAmount: t.rent_amount * 2, // Default 2x
+                                 leaseStart: t.move_in_date
+                               });
+                               setIsAgreementModalOpen(true);
+                             }}
+                             className="text-amber-600 hover:text-amber-700 font-bold text-xs bg-amber-50 hover:bg-amber-100 px-4 py-2 rounded-xl transition-all border border-amber-100 flex items-center gap-2"
+                           >
+                             <FileText size={14} /> Generate Agreement
+                           </button>
+                           <button 
+                              onClick={() => navigate(`/damages/${t.id}`)}
+                              className="text-rose-600 hover:text-rose-700 font-bold text-xs bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-xl transition-all border border-rose-100 flex items-center gap-2"
+                            >
+                              <Scale size={14} /> Calculate Damages
+                            </button>
                            <button 
                              onClick={() => handleEndTenancy(t.id, t.room_id)}
                              className="text-red-500 hover:text-red-700 font-bold text-xs bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl transition-all border border-red-100"
@@ -729,6 +933,255 @@ export default function LandlordDashboard() {
         </div>
       )}
 
+      {/* TAB 5: P&L DASHBOARD */}
+      {activeTab === 'pl' && (
+        <FeatureGate feature="pl_dashboard">
+          <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                  <div className="flex items-center gap-3 text-emerald-600 mb-4">
+                     <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center text-green-600">
+                        <TrendingUp size={20} />
+                     </div>
+                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-900/60 font-sans">Monthly Income</span>
+                  </div>
+                  <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic">₹{plSummary[plSummary.length - 1]?.income.toLocaleString() || '0'}</h3>
+                  <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase font-sans">Rent + Utilities Collected</p>
+               </div>
+
+               <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                  <div className="flex items-center gap-3 text-amber-600 mb-4">
+                     <div className="w-10 h-10 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
+                        <Receipt size={20} />
+                     </div>
+                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-900/60 font-sans">Total Expenses</span>
+                  </div>
+                  <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic">₹{plSummary[plSummary.length - 1]?.expenses.toLocaleString() || '0'}</h3>
+                  <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase font-sans">Maintenance, Tax & Repairs</p>
+               </div>
+
+               <div className={`p-8 rounded-[2.5rem] border shadow-lg shadow-black/5 transition-all ${
+                  (plSummary[plSummary.length - 1]?.net || 0) >= 0 
+                  ? 'bg-emerald-900 border-emerald-800 text-white' 
+                  : 'bg-rose-900 border-rose-800 text-white'
+               }`}>
+                  <div className="flex items-center gap-3 mb-4 opacity-70">
+                     <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center">
+                        <BarChart3 size={20} />
+                     </div>
+                     <span className="text-[10px] font-black uppercase tracking-[0.2em] font-sans">Net Cash Flow</span>
+                  </div>
+                  <h3 className="text-4xl font-black tracking-tighter italic">₹{plSummary[plSummary.length - 1]?.net.toLocaleString() || '0'}</h3>
+                  <p className="text-[10px] font-bold opacity-50 mt-3 uppercase font-sans">Current Month Bottom Line</p>
+               </div>
+            </div>
+
+            <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-10 flex items-center gap-8 print:hidden">
+                  <div className="flex items-center gap-2">
+                     <div className="w-4 h-4 bg-emerald-500 rounded-lg shadow-sm"></div>
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-sans">Gross Income</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <div className="w-4 h-4 bg-amber-500 rounded-lg shadow-sm"></div>
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-sans">Expenses</span>
+                  </div>
+               </div>
+               
+               <div className="mb-12">
+                  <h2 className="text-3xl font-black tracking-tight text-slate-900 font-sans">Profitability Velocity 🧪</h2>
+                  <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest font-sans">6-MONTH COMPARATIVE AUDIT</p>
+               </div>
+
+               <div className="h-[350px] w-full relative z-10">
+                  <canvas id="plChart"></canvas>
+               </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-6 mb-8 print:hidden">
+               <button 
+                 onClick={() => setIsExpenseModalOpen(true)}
+                 className="flex-1 bg-slate-900 text-white py-7 rounded-[2.5rem] font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 group active:scale-[0.98] font-sans"
+               >
+                  <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                     <Plus size={20} />
+                  </div>
+                  Record Expense
+               </button>
+
+               <button 
+                 onClick={() => {
+                   const plTable = document.getElementById('pl-export-table');
+                   if (plTable) {
+                     plTable.style.display = 'block';
+                     setTimeout(() => {
+                       window.print();
+                       plTable.style.display = 'none';
+                     }, 200);
+                   } else {
+                      window.print();
+                   }
+                 }}
+                 className="flex-1 bg-white text-slate-900 border-2 border-slate-100 py-7 rounded-[2.5rem] font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-3 group shadow-sm active:scale-[0.98] font-sans"
+               >
+                  <div className="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                     <Download size={20} />
+                  </div>
+                  Export for CA / ITR
+               </button>
+            </div>
+
+            {/* ONE-CLICK ITR EXPORT SECTION */}
+             <div className="bg-slate-900 rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl shadow-slate-200">
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl"></div>
+
+                <div className="relative z-10 flex flex-col md:flex-row gap-12 items-center">
+                   <div className="flex-1 space-y-6 text-center md:text-left">
+                      <div className="inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-300 px-4 py-2 rounded-full border border-emerald-500/30">
+                         <Sparkles size={14} className="animate-pulse" />
+                         <span className="text-[10px] font-black uppercase tracking-widest">Business Plan Exclusive</span>
+                      </div>
+                      
+                      <div>
+                        <h2 className="text-4xl md:text-5xl font-black tracking-tighter leading-none mb-4">One-Click ITR Export</h2>
+                        <p className="text-slate-400 text-sm md:text-base font-medium max-w-md leading-relaxed">
+                          Generate a professional Schedule HP statement mapped directly to Indian ITR forms. Ready to share with your CA.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                         {[
+                           { icon: FileSpreadsheet, label: 'Schedule HP Ready', color: 'emerald' },
+                           { icon: Share2, label: 'Shareable with CA', color: 'indigo' },
+                           { icon: ShieldCheck, label: 'Indian ITR Format', color: 'blue' }
+                         ].map((chip, i) => (
+                           <div key={i} className="flex items-center gap-2 bg-white/5 border border-white/10 p-3 rounded-2xl">
+                              <chip.icon size={16} className={`text-${chip.color}-400`} />
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{chip.label}</span>
+                           </div>
+                         ))}
+                      </div>
+                   </div>
+
+                   <div className="w-full md:w-80 bg-white/5 border border-white/10 p-6 md:p-8 rounded-[2.5rem] backdrop-blur-sm">
+                      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 px-1">Select Financial Year</label>
+                      <select 
+                        value={selectedFY}
+                        onChange={(e) => setSelectedFY(e.target.value)}
+                        className="w-full bg-slate-800 text-white border-2 border-slate-700 rounded-2xl px-4 py-4 font-bold text-sm outline-none focus:border-emerald-500 transition-all mb-6 appearance-none"
+                      >
+                         {fyOptions.map(opt => (
+                           <option key={opt} value={opt}>{opt}</option>
+                         ))}
+                      </select>
+
+                      <FeatureGate 
+                        feature="itr_export" 
+                        requiredPlan="business"
+                        fallback={
+                          <button 
+                            disabled 
+                            className="w-full bg-slate-700 text-slate-400 font-black py-5 rounded-[2rem] text-sm uppercase tracking-widest flex items-center justify-center gap-3 cursor-not-allowed"
+                          >
+                             <Lock size={18} /> Upgrade to Business
+                          </button>
+                        }
+                      >
+                        <button 
+                          onClick={async () => {
+                             try {
+                               setGeneratingITR(true);
+                               const blob = await generateITRExport(profile!.id, profile!.full_name, selectedFY);
+                               const url = window.URL.createObjectURL(blob);
+                               const a = document.createElement('a');
+                               a.href = url;
+                               a.download = `REHWAS_ITR_${selectedFY.replace(' ', '_')}_${profile?.full_name.replace(' ', '_')}.xlsx`;
+                               document.body.appendChild(a);
+                               a.click();
+                               window.URL.revokeObjectURL(url);
+                               toast.success('ITR Export generated successfully! 📊');
+                             } catch (err) {
+                               toast.error('Failed to generate export');
+                               console.error(err);
+                             } finally {
+                               setGeneratingITR(false);
+                             }
+                          }}
+                          disabled={generatingITR}
+                          className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-black py-5 rounded-[2rem] text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-emerald-500/20 active:scale-[0.98] transition-all"
+                        >
+                          {generatingITR ? (
+                             <div className="w-5 h-5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin"></div>
+                          ) : (
+                             <>
+                               <Download size={18} />
+                               Generate Excel
+                             </>
+                          )}
+                        </button>
+                      </FeatureGate>
+
+                      <div className="mt-6 p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
+                         <div className="flex gap-3">
+                            <Info size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                            <p className="text-[10px] font-medium text-indigo-300 leading-relaxed italic">
+                              This file maps directly to Schedule HP of ITR-1/2. Share it with your CA for quick filing.
+                            </p>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+                   <div className="flex items-center gap-2 text-slate-500">
+                      <AlertCircle size={14} />
+                      <p className="text-[10px] font-bold uppercase tracking-widest">Important Disclaimer</p>
+                   </div>
+                   <p className="text-[10px] text-slate-500 font-medium max-w-2xl leading-relaxed italic">
+                     This export is for reference only. REHWAS does not provide tax advice. NAV and standard deductions are calculated based on Indian Tax Laws Section 24. Please verify all figures with a qualified Chartered Accountant before filing.
+                   </p>
+                </div>
+             </div>
+
+            <div id="pl-export-table" className="hidden print:block mt-24 bg-white text-slate-900 font-sans">
+               <div className="text-center mb-16 border-b-4 border-slate-900 pb-12">
+                  <div className="flex items-center justify-center gap-4 mb-6">
+                    <div className="w-16 h-16 bg-slate-900 rounded-[2rem] flex items-center justify-center text-white">
+                      <TrendingUp size={36} />
+                    </div>
+                    <h1 className="text-5xl font-black tracking-tighter uppercase italic text-brand">REHWAS Audit Report</h1>
+                  </div>
+                  <p className="text-base font-black text-slate-400 uppercase tracking-[0.4em]">Chartered Accountant Portfolio Summary</p>
+                  <p className="text-sm font-bold mt-6 text-slate-500">PERIOD: {plSummary[0]?.month} — {plSummary[plSummary.length-1]?.month}</p>
+               </div>
+
+               <table className="w-full border-collapse">
+                  <thead>
+                     <tr className="bg-slate-50 border-y-2 border-slate-900 text-xs font-black uppercase tracking-widest text-slate-400">
+                        <th className="p-8 text-left">Statement Period</th>
+                        <th className="p-8 text-right">Gross Income (₹)</th>
+                        <th className="p-8 text-right">Operating Expenses (₹)</th>
+                        <th className="p-8 text-right">Net Liquidity (₹)</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y-2 divide-slate-100">
+                     {plSummary.map((s, i) => (
+                        <tr key={i} className="text-lg font-bold">
+                           <td className="p-8 text-slate-900">{s.month}</td>
+                           <td className="p-8 text-right text-emerald-600">+₹{s.income.toLocaleString()}</td>
+                           <td className="p-8 text-right text-amber-600">-₹{s.expenses.toLocaleString()}</td>
+                           <td className="p-8 text-right text-slate-900 font-black">₹{s.net.toLocaleString()}</td>
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
+            </div>
+          </div>
+        </FeatureGate>
+      )}
+
       {/* ADD TENANT MODAL */}
       {isAddTenantModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -738,7 +1191,7 @@ export default function LandlordDashboard() {
             <div className="p-6 md:p-8 flex flex-col gap-6">
               <div className="flex justify-between items-center">
                 <h3 className="text-2xl font-black text-gray-900">Add New Tenant</h3>
-                <button onClick={() => setIsAddTenantModalOpen(false)} className="bg-gray-100 hover:bg-gray-200 p-2 min-w-[44px] min-h-[44px] rounded-full text-gray-500 transition-colors bg-gray-50 flex items-center justify-center">
+                <button onClick={() => setIsAddTenantModalOpen(false)} className="bg-gray-100 hover:bg-gray-200 p-2 min-w-[44px] min-h-[44px] rounded-full text-gray-500 transition-colors flex items-center justify-center">
                   <X size={20} />
                 </button>
               </div>
@@ -780,12 +1233,40 @@ export default function LandlordDashboard() {
                   {checkingTenant && (
                     <p className="text-[10px] font-bold text-blue-600 mt-1 animate-pulse uppercase tracking-[0.2em]">Checking REHWAS ecosystem...</p>
                   )}
-                  {foundTenantProfileId && (
-                    <div className="mt-2 animate-in fade-in slide-in-from-top-1">
-                      <div className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">REHWAS Verified User Found!</div>
-                      <TenantRentScore tenantId={foundTenantProfileId} compact />
+                  {foundTenantProfileId ? (
+                    <div className="mt-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 animate-in slide-in-from-top-2 duration-300">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
+                          <ShieldCheck size={18} />
+                        </div>
+                        <div className="text-xs font-black text-slate-900 tracking-tight">
+                          Found: <span className="italic">{tenantName}</span>
+                          {tenantCVData && <span className="ml-1 text-indigo-600">— Grade: {tenantCVData.rent_health_grade}</span>}
+                        </div>
+                      </div>
+
+                      {tenantCVData ? (
+                        <div className="flex flex-col gap-3">
+                          <TenantRentScore tenantId={foundTenantProfileId} compact />
+                          <button 
+                            type="button"
+                            onClick={() => window.open(`/tenant-cv/${foundTenantProfileId}`, '_blank')}
+                            className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1.5 hover:gap-3 transition-all"
+                          >
+                            View full Rental CV <ExternalLink size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-[10px] font-bold text-slate-500 italic">
+                          {tenantName} is on REHWAS but has no payment history yet.
+                        </p>
+                      )}
                     </div>
-                  )}
+                  ) : tenantPhone.length === 10 && !checkingTenant ? (
+                    <p className="text-[10px] font-bold text-rose-500 mt-2 ml-1 uppercase tracking-widest">
+                      No REHWAS account found for this number
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex gap-4">
@@ -823,269 +1304,260 @@ export default function LandlordDashboard() {
           </div>
         </div>
       )}
-      {/* UTILITY BILLING MODAL */}
-      {isUtilModalOpen && (
+         {isUtilModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" onClick={() => setIsUtilModalOpen(false)}></div>
           
-          <div className="bg-white w-full max-w-md rounded-[32px] overflow-hidden shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 md:p-8 flex flex-col gap-6">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                   <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-                      <IndianRupee size={20}/>
-                   </div>
-                   <h3 className="text-2xl font-black text-gray-900 tracking-tighter">Split Utility Bill</h3>
-                </div>
-                <button 
-                  onClick={() => setIsUtilModalOpen(false)} 
-                  className="bg-gray-100 hover:bg-gray-200 p-2 min-w-[44px] min-h-[44px] rounded-full text-gray-500 transition-colors flex items-center justify-center"
-                >
-                  <X size={20} />
-                </button>
+          <div className="bg-white w-full max-w-lg rounded-[32px] overflow-hidden shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-6 md:p-8 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                 <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                    <Zap size={24}/>
+                 </div>
+                 <div>
+                    <h3 className="text-2xl font-black text-gray-900 tracking-tighter leading-none">Urja 2.0</h3>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Utility Bill Splitter</p>
+                 </div>
               </div>
+              <button 
+                onClick={() => setIsUtilModalOpen(false)} 
+                className="bg-gray-100 hover:bg-gray-200 p-2 min-w-[44px] min-h-[44px] rounded-full text-gray-500 transition-colors flex items-center justify-center"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-              <div className="flex flex-col gap-5">
-                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
-                   <p className="text-xs font-bold text-indigo-800 leading-relaxed">
-                      💡 <strong>Shared Split Strategy:</strong> Enter the building's total bill. It will be divided equally across selected active tenants.
-                   </p>
-                </div>
+            <div className="p-6 md:p-8 overflow-y-auto flex-1">
+              <div className="flex flex-col gap-8">
+                {/* 1. Category Inputs */}
+                <div className="space-y-4">
+                   <div className="flex items-center justify-between px-1">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Bill Categories</h4>
+                      <div className="flex items-center gap-2">
+                         <span className="text-[10px] font-bold text-gray-400">Billing Month:</span>
+                         <select 
+                            value={utilMonth}
+                            onChange={(e) => setUtilMonth(e.target.value)}
+                            className="bg-transparent border-none text-[10px] font-black text-indigo-600 focus:ring-0 cursor-pointer p-0"
+                          >
+                            {Array.from({ length: 6 }).map((_, i) => {
+                                const m = format(subMonths(new Date(), i), 'MMM yyyy');
+                                return <option key={m} value={m}>{m}</option>
+                            })}
+                          </select>
+                      </div>
+                   </div>
 
-                <div>
-                  <label className="block text-sm font-black text-gray-700 uppercase tracking-widest mb-1.5 ml-1">Total Bill Amount (₹)</label>
-                  <input 
-                    type="number" 
-                    value={utilTotalAmount} onChange={(e) => setUtilTotalAmount(e.target.value)}
-                    required placeholder="e.g. 5400"
-                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all font-black text-gray-900 text-xl"
-                  />
-                </div>
-
-                <div>
-                   <label className="block text-sm font-black text-gray-700 uppercase tracking-widest mb-1.5 ml-1">Billing Month</label>
-                   <select 
-                     value={utilMonth}
-                     onChange={(e) => setUtilMonth(e.target.value)}
-                     className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl outline-none font-black text-gray-800 text-lg appearance-none"
-                   >
-                     {Array.from({ length: 6 }).map((_, i) => {
-                        const m = format(subMonths(new Date(), i), 'MMM yyyy');
-                        return <option key={m} value={m}>{m}</option>
-                     })}
-                   </select>
-                </div>
-
-                <div>
-                   <label className="block text-sm font-black text-gray-700 uppercase tracking-widest mb-1.5 ml-1">Included Tenants ({selectedTenantsForUtil.length})</label>
-                   <div className="max-h-48 overflow-y-auto border-2 border-gray-50 rounded-2xl p-3 flex flex-col gap-2 bg-slate-50/30">
-                      {tenants.map(t => (
-                        <label key={t.id} className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer border-2 transition-all ${selectedTenantsForUtil.includes(t.id) ? 'bg-white border-indigo-200 shadow-sm' : 'border-transparent opacity-60'}`}>
-                           <input 
-                             type="checkbox" 
-                             checked={selectedTenantsForUtil.includes(t.id)}
-                             onChange={(e) => {
-                                if (e.target.checked) setSelectedTenantsForUtil([...selectedTenantsForUtil, t.id]);
-                                else setSelectedTenantsForUtil(selectedTenantsForUtil.filter(id => id !== t.id));
+                   <div className="space-y-3">
+                      {billItems.map((item, idx) => (
+                        <div key={item.id} className={`p-4 rounded-[2rem] border-2 transition-all flex items-center gap-4 ${item.enabled ? 'bg-white border-indigo-100 shadow-sm' : 'bg-gray-50/50 border-transparent opacity-60'}`}>
+                           <button 
+                             onClick={() => {
+                               const newItems = [...billItems];
+                               newItems[idx].enabled = !newItems[idx].enabled;
+                               setBillItems(newItems);
                              }}
-                             className="w-5 h-5 accent-indigo-600 rounded-md"
-                           />
-                           <div className="flex flex-col">
-                              <span className="font-black text-sm text-gray-900 leading-tight">{t.profiles?.full_name}</span>
-                              <span className="text-[10px] text-gray-500 font-black uppercase tracking-tighter">{t.rooms?.title}</span>
+                             className={`w-12 h-6 rounded-full relative transition-colors duration-200 ease-in-out shrink-0 ${item.enabled ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                           >
+                             <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${item.enabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                           </button>
+
+                           <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                 <item.icon size={16} className={item.enabled ? 'text-indigo-600' : 'text-gray-400'} />
+                                 <span className="font-bold text-gray-900 truncate">{item.label}</span>
+                              </div>
+                              <p className="text-[10px] text-gray-500 font-medium truncate mt-0.5">{item.helper}</p>
                            </div>
-                        </label>
+
+                           <div className="w-28 relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">₹</span>
+                              <input 
+                                type="number"
+                                disabled={!item.enabled}
+                                value={item.amount || ''}
+                                onChange={(e) => {
+                                  const newItems = [...billItems];
+                                  newItems[idx].amount = Number(e.target.value);
+                                  setBillItems(newItems);
+                                }}
+                                className="w-full pl-7 pr-3 py-2 bg-gray-50 rounded-xl border border-transparent focus:border-indigo-500 outline-none text-right font-black text-gray-900"
+                                placeholder="0"
+                              />
+                           </div>
+                        </div>
                       ))}
+
+                      {/* Custom Items */}
+                      {customItems.map((item, idx) => (
+                         <div key={item.id} className="p-4 rounded-[2rem] bg-indigo-50/50 border-2 border-indigo-100 flex items-center gap-4 animate-in slide-in-from-left-2">
+                            <button onClick={() => setCustomItems(customItems.filter(c => c.id !== item.id))} className="text-rose-500 hover:text-rose-600 shrink-0">
+                               <Trash size={18} />
+                            </button>
+                            <input 
+                               type="text" 
+                               value={item.label}
+                               onChange={(e) => {
+                                  const newItems = [...customItems];
+                                  newItems[idx].label = e.target.value;
+                                  setCustomItems(newItems);
+                               }}
+                               className="bg-transparent border-none p-0 font-bold text-gray-900 focus:ring-0 flex-1"
+                            />
+                            <div className="w-28 relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">₹</span>
+                              <input 
+                                type="number"
+                                value={item.amount || ''}
+                                onChange={(e) => {
+                                  const newItems = [...customItems];
+                                  newItems[idx].amount = Number(e.target.value);
+                                  setCustomItems(newItems);
+                                }}
+                                className="w-full pl-7 pr-3 py-2 bg-white rounded-xl border border-transparent focus:border-indigo-500 outline-none text-right font-black text-gray-900"
+                                placeholder="0"
+                              />
+                           </div>
+                         </div>
+                      ))}
+
+                      <button 
+                        onClick={() => setCustomItems([...customItems, { id: Math.random().toString(), label: 'Other Charge', amount: 0 }])}
+                        className="w-full py-3 border-2 border-dashed border-gray-200 rounded-[2rem] text-gray-400 hover:text-indigo-600 hover:border-indigo-200 transition-all flex items-center justify-center gap-2 font-bold text-sm"
+                      >
+                         <PlusCircle size={16} /> Add Custom Charge
+                      </button>
                    </div>
                 </div>
 
-                {utilTotalAmount && selectedTenantsForUtil.length > 0 && (
-                   <div className="p-5 bg-gradient-to-br from-emerald-50 to-white border-2 border-emerald-100 rounded-[2rem] flex justify-between items-center mt-2 shadow-inner">
+                {/* 2. Tenant Selection */}
+                <div className="space-y-4">
+                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] px-1">Split Across Tenants ({selectedTenantsForUtil.length})</h4>
+                    <div className="flex flex-wrap gap-2">
+                       {tenants.map(t => (
+                         <button 
+                           key={t.id}
+                           onClick={() => {
+                              if (selectedTenantsForUtil.includes(t.id)) setSelectedTenantsForUtil(selectedTenantsForUtil.filter(id => id !== t.id));
+                              else setSelectedTenantsForUtil([...selectedTenantsForUtil, t.id]);
+                           }}
+                           className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center gap-2 ${selectedTenantsForUtil.includes(t.id) ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'}`}
+                         >
+                            {selectedTenantsForUtil.includes(t.id) && <Check size={12} />}
+                            {t.profiles?.full_name?.split(' ')[0]}
+                         </button>
+                       ))}
+                    </div>
+                </div>
+
+                {/* 3. Live Share Card */}
+                {totalBillAmount > 0 && selectedTenantsForUtil.length > 0 && (
+                   <div className="p-6 bg-emerald-900 rounded-[2.5rem] text-white flex justify-between items-center shadow-xl shadow-emerald-100 animate-in zoom-in-95">
                       <div>
-                         <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1">Individual Share</p>
-                         <p className="text-3xl font-black text-emerald-800 tracking-tighter">₹{Math.round(parseFloat(utilTotalAmount) / selectedTenantsForUtil.length).toLocaleString()}</p>
+                         <p className="text-[10px] font-black text-emerald-300 uppercase tracking-[0.2em] mb-2">Live Individual Share</p>
+                         <div className="flex items-baseline gap-2">
+                            <span className="text-4xl font-black italic tracking-tighter">₹{Math.round(totalBillAmount / selectedTenantsForUtil.length).toLocaleString()}</span>
+                            <span className="text-emerald-400 text-[10px] font-bold">per tenant</span>
+                         </div>
                       </div>
-                      <div className="w-12 h-12 rounded-full border-4 border-emerald-200 border-t-emerald-500 animate-[spin_3s_linear_infinite]"></div>
+                      <div className="flex flex-col items-end gap-1">
+                         <div className="text-[10px] font-bold text-emerald-300 bg-white/10 px-2 py-1 rounded-lg">
+                            Total: ₹{totalBillAmount.toLocaleString()}
+                         </div>
+                         <div className="text-[10px] font-bold text-emerald-300 bg-white/10 px-2 py-1 rounded-lg">
+                            Split: {selectedTenantsForUtil.length} Tenants
+                         </div>
+                      </div>
                    </div>
                 )}
 
-                <div className="mt-4 pt-6 border-t border-gray-100">
-                  <FeatureGate feature="urja_splitter" requiredPlan="pro">
-                    <button 
-                      onClick={async () => {
-                         if (!utilTotalAmount || selectedTenantsForUtil.length === 0) {
-                            toast.error('Please fill all fields');
-                            return;
-                         }
-                         setApplyingUtil(true);
-                         const { error } = await applyBulkUtilityBill(profile!.id, utilMonth, parseFloat(utilTotalAmount), selectedTenantsForUtil);
-                         setApplyingUtil(false);
-                         if (error) toast.error('Error applying bill: ' + (error as any).message);
-                         else {
-                            toast.success('Building bill split successfully! ⚡');
-                            setIsUtilModalOpen(false);
-                            loadDashboardData();
-                         }
-                      }}
-                      disabled={applyingUtil}
-                      className={`w-full font-black py-5 rounded-[2rem] shadow-xl transition-all flex items-center justify-center gap-3 active:scale-[0.98] ${applyingUtil ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20'}`}
-                    >
-                      {applyingUtil ? (
-                         <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            <span>Calculating Shares...</span>
-                         </div>
-                      ) : (
-                         <>
-                            <IndianRupee size={20} />
-                            <span>Finalize & Update Ledger</span>
-                         </>
-                      )}
-                    </button>
-                  </FeatureGate>
+                {/* 4. History Accordion */}
+                <div className="border-t border-gray-100 pt-6">
+                   <button 
+                     onClick={() => setShowHistory(!showHistory)}
+                     className="w-full flex items-center justify-between text-gray-500 hover:text-gray-900 transition-colors"
+                   >
+                      <div className="flex items-center gap-2">
+                         <History size={16} />
+                         <span className="text-xs font-black uppercase tracking-widest">Previous Splits</span>
+                      </div>
+                      {showHistory ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                   </button>
+
+                   {showHistory && (
+                      <div className="mt-4 space-y-2 animate-in slide-in-from-top-2">
+                         {previousSplits.length === 0 ? (
+                            <p className="text-[10px] text-gray-400 italic text-center py-4">No utility history found</p>
+                         ) : (
+                            previousSplits.map((split, i) => (
+                               <div key={i} className="bg-gray-50 p-4 rounded-2xl flex justify-between items-center border border-gray-100">
+                                  <div>
+                                     <p className="text-xs font-black text-gray-900">{split.month}</p>
+                                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">
+                                        Split across {split.count} tenants: {split.names.slice(0, 2).join(', ')}{split.names.length > 2 && '...'}
+                                     </p>
+                                  </div>
+                                  <div className="text-right">
+                                     <p className="text-xs font-black text-indigo-600">₹{split.totalPerTenant}</p>
+                                     <p className="text-[10px] text-gray-400 font-bold">per tenant</p>
+                                  </div>
+                               </div>
+                            ))
+                         )}
+                      </div>
+                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 md:p-8 border-t border-gray-100 bg-gray-50/50">
+              <FeatureGate feature="urja_splitter">
+                <button 
+                  onClick={async () => {
+                     if (totalBillAmount === 0 || selectedTenantsForUtil.length === 0) {
+                        toast.error('Please add charges and select tenants');
+                        return;
+                     }
+                     setApplyingUtil(true);
+                     
+                     // Prepare combined list for the hook
+                     const combinedItems = [
+                       ...billItems.map(b => ({ label: b.label, amount: b.amount, enabled: b.enabled })),
+                       ...customItems.map(c => ({ label: c.label, amount: c.amount, enabled: true }))
+                     ];
+
+                     const { error } = await applySplit(profile!.id, utilMonth, combinedItems, selectedTenantsForUtil);
+                     setApplyingUtil(false);
+                     
+                     if (error) toast.error('Error applying bill: ' + (error as any).message);
+                     else {
+                        toast.success('Urja Split Applied Successfully! ⚡');
+                        setIsUtilModalOpen(false);
+                        loadDashboardData();
+                     }
+                  }}
+                  disabled={applyingUtil || totalBillAmount === 0}
+                  className={`w-full font-black py-5 rounded-[2rem] shadow-xl transition-all flex items-center justify-center gap-3 active:scale-[0.98] ${applyingUtil || totalBillAmount === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20'}`}
+                >
+                  {applyingUtil ? (
+                     <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Calculating Shares...</span>
+                     </div>
+                  ) : (
+                     <>
+                        <Calculator size={20} />
+                        <span>Split & Update Khata</span>
+                     </>
+                  )}
+                </button>
+              </FeatureGate>
             </div>
           </div>
         </div>
       )}
-      {/* Hidden Digital Dossier for Printing */}
-      {selectedDossierTenant && <DigitalDossier tenant={selectedDossierTenant} />}
-       {/* TAB 5: P&L DASHBOARD */}
-       {activeTab === 'pl' && (
-         <FeatureGate feature="pl_dashboard" requiredPlan="business">
-           <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-md">
-                   <div className="flex items-center gap-3 text-emerald-600 mb-4">
-                      <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center text-green-600">
-                         <TrendingUp size={20} />
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-900/60 font-sans">Monthly Income</span>
-                   </div>
-                   <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic">₹{plSummary[plSummary.length - 1]?.income.toLocaleString() || '0'}</h3>
-                   <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase font-sans">Rent + Utilities Collected</p>
-                </div>
-
-                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:shadow-md">
-                   <div className="flex items-center gap-3 text-amber-600 mb-4">
-                      <div className="w-10 h-10 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
-                         <Receipt size={20} />
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-900/60 font-sans">Total Expenses</span>
-                   </div>
-                   <h3 className="text-4xl font-black text-slate-900 tracking-tighter italic">₹{plSummary[plSummary.length - 1]?.expenses.toLocaleString() || '0'}</h3>
-                   <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase font-sans">Maintenance, Tax & Repairs</p>
-                </div>
-
-                <div className={`p-8 rounded-[2.5rem] border shadow-lg shadow-black/5 transition-all ${
-                   (plSummary[plSummary.length - 1]?.net || 0) >= 0 
-                   ? 'bg-emerald-900 border-emerald-800 text-white' 
-                   : 'bg-rose-900 border-rose-800 text-white'
-                }`}>
-                   <div className="flex items-center gap-3 mb-4 opacity-70">
-                      <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center">
-                         <BarChart3 size={20} />
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] font-sans">Net Cash Flow</span>
-                   </div>
-                   <h3 className="text-4xl font-black tracking-tighter italic">₹{plSummary[plSummary.length - 1]?.net.toLocaleString() || '0'}</h3>
-                   <p className="text-[10px] font-bold opacity-50 mt-3 uppercase font-sans">Current Month Bottom Line</p>
-                </div>
-             </div>
-
-             <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-10 flex items-center gap-8 print:hidden">
-                   <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-emerald-500 rounded-lg shadow-sm"></div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-sans">Gross Income</span>
-                   </div>
-                   <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-amber-500 rounded-lg shadow-sm"></div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-sans">Expenses</span>
-                   </div>
-                </div>
-                
-                <div className="mb-12">
-                   <h2 className="text-3xl font-black tracking-tight text-slate-900 font-sans">Profitability Velocity 🧪</h2>
-                   <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest font-sans">6-MONTH COMPARATIVE AUDIT</p>
-                </div>
-
-                <div className="h-[350px] w-full relative z-10">
-                   <canvas id="plChart"></canvas>
-                </div>
-             </div>
-
-             <div className="flex flex-col md:flex-row gap-6 mb-8 print:hidden">
-                <button 
-                  onClick={() => setIsExpenseModalOpen(true)}
-                  className="flex-1 bg-slate-900 text-white py-7 rounded-[2.5rem] font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 group active:scale-[0.98] font-sans"
-                >
-                   <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Plus size={20} />
-                   </div>
-                   Record Expense
-                </button>
-
-                <button 
-                  onClick={() => {
-                    const plTable = document.getElementById('pl-export-table');
-                    if (plTable) {
-                      plTable.style.display = 'block';
-                      setTimeout(() => {
-                        window.print();
-                        plTable.style.display = 'none';
-                      }, 200);
-                    } else {
-                       window.print();
-                    }
-                  }}
-                  className="flex-1 bg-white text-slate-900 border-2 border-slate-100 py-7 rounded-[2.5rem] font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-3 group shadow-sm active:scale-[0.98] font-sans"
-                >
-                   <div className="w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Download size={20} />
-                   </div>
-                   Export for CA / ITR
-                </button>
-             </div>
-
-             <div id="pl-export-table" className="hidden print:block mt-24 bg-white text-slate-900 font-sans">
-                <div className="text-center mb-16 border-b-4 border-slate-900 pb-12">
-                   <div className="flex items-center justify-center gap-4 mb-6">
-                     <div className="w-16 h-16 bg-slate-900 rounded-[2rem] flex items-center justify-center text-white">
-                       <TrendingUp size={36} />
-                     </div>
-                     <h1 className="text-5xl font-black tracking-tighter uppercase italic text-brand">REHWAS Audit Report</h1>
-                   </div>
-                   <p className="text-base font-black text-slate-400 uppercase tracking-[0.4em]">Chartered Accountant Portfolio Summary</p>
-                   <p className="text-sm font-bold mt-6 text-slate-500">PERIOD: {plSummary[0]?.month} — {plSummary[plSummary.length-1]?.month}</p>
-                </div>
-
-                <table className="w-full border-collapse">
-                   <thead>
-                      <tr className="bg-slate-50 border-y-2 border-slate-900 text-xs font-black uppercase tracking-widest text-slate-400">
-                         <th className="p-8 text-left">Statement Period</th>
-                         <th className="p-8 text-right">Gross Income (₹)</th>
-                         <th className="p-8 text-right">Operating Expenses (₹)</th>
-                         <th className="p-8 text-right">Net Liquidity (₹)</th>
-                      </tr>
-                   </thead>
-                   <tbody className="divide-y-2 divide-slate-100">
-                      {plSummary.map((s, i) => (
-                         <tr key={i} className="text-lg font-bold">
-                            <td className="p-8 text-slate-900">{s.month}</td>
-                            <td className="p-8 text-right text-emerald-600">+₹{s.income.toLocaleString()}</td>
-                            <td className="p-8 text-right text-amber-600">-₹{s.expenses.toLocaleString()}</td>
-                            <td className="p-8 text-right text-slate-900 font-black">₹{s.net.toLocaleString()}</td>
-                         </tr>
-                      ))}
-                   </tbody>
-                </table>
-             </div>
-           </div>
-         </FeatureGate>
-       )}
-
       {/* RECORD EXPENSE MODAL */}
       {isExpenseModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -1216,6 +1688,83 @@ export default function LandlordDashboard() {
             setIsMoveInReportModalOpen(false);
             loadDashboardData();
           }}
+        />
+      )}
+
+      {/* DEPOSIT VAULT DETAIL MODAL */}
+      {selectedDepositTenant && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setSelectedDepositTenant(null)}></div>
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden relative shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-8">
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600">
+                    <Lock size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black tracking-tight">Deposit Vault</h3>
+                    <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest">{selectedDepositTenant.profiles?.full_name}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedDepositTenant(null)} className="p-2 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="bg-slate-50 rounded-[2rem] p-6 mb-8 border border-slate-100">
+                <div className="flex justify-between items-center mb-4">
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount Secured</span>
+                   <span className="text-2xl font-black text-emerald-600 tracking-tighter">₹{(selectedDepositTenant.rent_amount * 3).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center mb-4">
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</span>
+                   <span className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                     <Check size={10} /> Held by REHWAS
+                   </span>
+                </div>
+                <div className="flex justify-between items-center">
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paid On</span>
+                   <span className="text-xs font-bold text-slate-600">{format(new Date(), 'MMM dd, yyyy')}</span>
+                </div>
+              </div>
+
+              <div className="bg-indigo-50 border border-indigo-100 p-5 rounded-2xl mb-8 flex gap-3">
+                <Info size={20} className="text-indigo-500 shrink-0" />
+                <p className="text-[10px] text-indigo-800 font-bold leading-relaxed">
+                  Funds will be automatically released to your bank account once the **Move-in Photo Report** is signed by both you and the tenant.
+                </p>
+              </div>
+
+              <button 
+                disabled
+                className="w-full bg-slate-100 text-slate-400 py-4 rounded-xl font-black text-xs uppercase tracking-widest cursor-not-allowed mb-2"
+              >
+                Release Deposit (Locked)
+              </button>
+              <p className="text-center text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                Requires Signed Move-in Report
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Hidden Digital Dossier for Printing */}
+      {selectedDossierTenant && <DigitalDossier tenant={selectedDossierTenant} />}
+      {/* Micro-transaction Modals */}
+      {selectedBoostRoom && (
+        <BoostModal 
+          isOpen={isBoostModalOpen} 
+          onClose={() => setIsBoostModalOpen(false)} 
+          room={selectedBoostRoom} 
+        />
+      )}
+      
+      {selectedAgreementTenant && (
+        <RentAgreementModal 
+          isOpen={isAgreementModalOpen} 
+          onClose={() => setIsAgreementModalOpen(false)} 
+          initialData={selectedAgreementTenant} 
         />
       )}
     </div>

@@ -20,7 +20,9 @@ import {
   Mail,
   HeadphonesIcon
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { useSubscription } from '../hooks/useSubscription';
 
 /**
  * PRICING PSYCHOLOGY: ANCHORING & THE CENTER-STAGE EFFECT
@@ -43,6 +45,23 @@ import { Link } from 'react-router-dom';
 const Pricing: React.FC = () => {
   const [isAnnual, setIsAnnual] = useState(true);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { subscribe } = useSubscription();
+
+  const handlePlanAction = (planName: string) => {
+    if (!user) {
+      navigate(planName === 'Starter' ? '/login' : '/login?plan=' + planName.toLowerCase());
+      return;
+    }
+
+    if (planName === 'Starter') {
+      navigate('/dashboard');
+      return;
+    }
+
+    subscribe(planName.toLowerCase() as 'pro' | 'business', isAnnual ? 'annual' : 'monthly');
+  };
 
   // Pricing Data
   const plans = [
@@ -244,8 +263,8 @@ const Pricing: React.FC = () => {
                 )}
               </div>
 
-              <Link 
-                to={plan.name === 'Starter' ? '/login' : '/login?plan=' + plan.name.toLowerCase()}
+              <button 
+                onClick={() => handlePlanAction(plan.name)}
                 className={`w-full py-4 rounded-xl font-bold text-center transition-all active:scale-95 mb-4 ${
                   plan.ctaVariant === 'solid' 
                   ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-600/20' 
@@ -255,7 +274,7 @@ const Pricing: React.FC = () => {
                 }`}
               >
                 {plan.cta}
-              </Link>
+              </button>
               
               {plan.ctaVariant === 'solid' && (
                 <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">

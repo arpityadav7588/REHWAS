@@ -18,6 +18,8 @@ import {
   Menu, 
   X,
   Star,
+  Sparkles,
+  Check,
   ArrowUpRight
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -120,7 +122,7 @@ const NavItem = ({ to, icon: Icon, label, active, onClick, locked }: NavItemProp
  * A sidebar is like your permanent office desk — everything is within arm's reach.
  * A top navbar is like a visitor's pass — you use it to find where you're going and then tuck it away.
  */
-export const AppShell = ({ children }: { children: React.ReactNode }) => {
+export const AppShell = ({ children }: { children?: React.ReactNode }) => {
   const { profile, signOut, isLandlord } = useAuth();
   const location = useLocation();
   const [searchParams] = useSearchParams();

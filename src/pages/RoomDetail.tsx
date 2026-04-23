@@ -6,15 +6,18 @@ import type { Room } from '@/types';
 import toast from 'react-hot-toast';
 import { RoomCard } from '@/components/RoomCard';
 import { 
-  X, Loader2, FileText, MapPin, Zap
+  X, Loader2, FileText, MapPin, Zap, Moon, ShieldCheck, Lock, Info, Check
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { format, parseISO } from 'date-fns';
+import { useDepositVault } from '../hooks/useDepositVault';
 import { ChatWindow } from '@/components/ChatWindow';
 import { CommuteWidget } from '@/components/CommuteWidget';
 import { TenantRentScore } from '@/components/TenantRentScore';
+import { RentHistoryChart } from '@/components/RentHistoryChart';
+
 
 
 interface RoomWithLandlord extends Room {
@@ -82,6 +85,9 @@ export default function RoomDetail() {
   // Chat Drawer State
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [moveInReport, setMoveInReport] = useState<any>(null);
+  const [galleryMode, setGalleryMode] = useState<'photos' | 'night_view'>('photos');
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const { initiateDeposit, loading: depositLoading } = useDepositVault();
 
   useEffect(() => {
     if (!id) return;
@@ -254,27 +260,89 @@ export default function RoomDetail() {
                 No Photos Available
               </div>
             )}
-            
-            {/* Floating Index Badge */}
-            <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold tracking-wider">
-              {activePhotoIdx + 1} / {room.photos?.length || 0}
-            </div>
           </div>
 
-          {/* Overlapping Thumbnails */}
-          <div className="flex gap-3 px-4 -mt-12 relative z-10 overflow-x-auto hide-scrollbar snap-x">
-            {room.photos?.map((url: string, idx: number) => (
-              <button
-                key={idx}
-                onClick={() => setActivePhotoIdx(idx)}
-                className={`min-w-[100px] h-20 rounded-xl overflow-hidden ring-4 transition-all snap-start ${
-                  idx === activePhotoIdx ? 'ring-primary shadow-xl scale-95' : 'ring-white shadow-lg opacity-80'
-                }`}
-              >
-                <img src={url} className="w-full h-full object-cover" alt={`Thumb ${idx}`} />
-              </button>
-            ))}
+          {/* GALLERY TABS */}
+          <div className="flex gap-4 px-4 mt-6">
+            <button 
+              onClick={() => setGalleryMode('photos')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${galleryMode === 'photos' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-400 hover:bg-gray-50'}`}
+            >
+              <span className="material-symbols-outlined text-[18px]">photo_library</span>
+              Photos ({room.photos?.length || 0})
+            </button>
+            <button 
+              onClick={() => setGalleryMode('night_view')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${galleryMode === 'night_view' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-white text-gray-400 hover:bg-gray-50'}`}
+            >
+              <Moon size={16} className={galleryMode === 'night_view' ? 'fill-emerald-400 text-emerald-400' : ''} />
+              Night View
+            </button>
           </div>
+
+          {/* Overlapping Thumbnails (only for photos mode) */}
+          {galleryMode === 'photos' ? (
+            <div className="flex gap-3 px-4 -mt-12 relative z-10 overflow-x-auto hide-scrollbar snap-x">
+              {room.photos?.map((url: string, idx: number) => (
+                <button
+                  key={idx}
+                  onClick={() => setActivePhotoIdx(idx)}
+                  className={`min-w-[100px] h-20 rounded-xl overflow-hidden ring-4 transition-all snap-start ${
+                    idx === activePhotoIdx ? 'ring-primary shadow-xl scale-95' : 'ring-white shadow-lg opacity-80'
+                  }`}
+                >
+                  <img src={url} className="w-full h-full object-cover" alt={`Thumb ${idx}`} />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 -mt-12 relative z-10">
+              <div className="bg-slate-900 rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden aspect-video max-w-2xl mx-auto flex flex-col relative group">
+                {room.street_video_url ? (
+                  <>
+                    <video 
+                      src={room.street_video_url} 
+                      className="w-full h-full object-cover"
+                      controls
+                      poster="/night-poster-placeholder.jpg"
+                    />
+                    <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
+                      <div className="bg-black/60 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-white/20">
+                        <Moon size={12} className="fill-emerald-400 text-emerald-400" /> Night View
+                      </div>
+                      {room.profiles?.kyc_verified && (
+                        <div className="bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-emerald-400/50">
+                          <ShieldCheck size={12} /> Verified by REHWAS
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute bottom-4 left-4 bg-black/40 backdrop-blur-sm text-white/70 px-3 py-1 rounded-lg text-[9px] font-bold">
+                      Recorded at night by landlord • {format(parseISO(room.created_at), 'MMM yyyy')}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                    <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                      <Moon size={32} className="text-slate-500" />
+                    </div>
+                    <h4 className="text-white font-black text-lg mb-2">No night view available</h4>
+                    <p className="text-slate-400 text-sm max-w-xs mb-6">Ask the landlord for a walkthrough video of the street at night.</p>
+                    <button 
+                      onClick={() => {
+                        setIsChatOpen(true);
+                        // The ChatWindow component should handle the initial message if we pass it, 
+                        // but here we'll just open the chat.
+                        toast.success('Chat opened! Ask the landlord for a video.');
+                      }}
+                      className="bg-white text-slate-900 px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-400 transition-colors"
+                    >
+                      Request Night View
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </section>
 
         <div className="max-w-4xl mx-auto px-4 lg:px-0">
@@ -368,6 +436,22 @@ export default function RoomDetail() {
                     </div>
                   ))}
                 </div>
+              </section>
+
+              {/* LOCAL MARKET TRENDS */}
+              <section className="bg-white p-6 md:p-8 rounded-3xl shadow-[0_4px_40px_rgba(0,0,0,0.03)] border border-surface-container-low">
+                <div className="flex flex-col gap-1 mb-6">
+                  <h3 className="font-headline font-bold text-xl text-on-surface">Local Market Trends</h3>
+                  <p className="text-sm font-bold text-gray-400 uppercase tracking-tight">
+                    Average {room.room_type} rent in {room.locality} over 12 months
+                  </p>
+                </div>
+                <RentHistoryChart 
+                  locality={room.locality}
+                  city={room.city}
+                  roomType={room.room_type}
+                  currentRent={room.rent_amount}
+                />
               </section>
 
               {/* Location (Mini Map) */}
@@ -465,6 +549,49 @@ export default function RoomDetail() {
                   </button>
                 </div>
               </section>
+
+              {/* DEPOSIT VAULT SECTION (Desktop Sidebar) */}
+              <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 p-8 overflow-hidden relative group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-[5rem] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 text-indigo-600 mb-4">
+                    <Lock size={20} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Secure Deposit Vault</span>
+                  </div>
+                  
+                  <div className="mb-6">
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Total Security Deposit</p>
+                    <div className="flex items-end gap-2">
+                      <h3 className="text-4xl font-black text-indigo-600 tracking-tighter">₹{(room.rent_amount * 3).toLocaleString()}</h3>
+                      <span className="text-slate-400 text-sm font-bold mb-1.5">(3 mo)</span>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => setIsDepositModalOpen(true)}
+                    className="w-full bg-white border-2 border-indigo-600 text-indigo-600 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 hover:text-white shadow-lg shadow-indigo-100 active:scale-95 transition-all mb-6 flex items-center justify-center gap-2"
+                  >
+                    <Lock size={16} /> Pay Deposit Securely
+                  </button>
+
+                  <div className="flex justify-between items-center px-1">
+                    <div className="flex flex-col items-center gap-1">
+                      <ShieldCheck size={14} className="text-emerald-500" />
+                      <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Protected</span>
+                    </div>
+                    <div className="w-px h-6 bg-slate-100"></div>
+                    <div className="flex flex-col items-center gap-1">
+                      <Check size={14} className="text-blue-500" />
+                      <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Escrowed</span>
+                    </div>
+                    <div className="w-px h-6 bg-slate-100"></div>
+                    <div className="flex flex-col items-center gap-1">
+                      <Info size={14} className="text-indigo-400" />
+                      <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Refundable</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -485,16 +612,29 @@ export default function RoomDetail() {
       {/* 5. STICKY BOTTOM BAR (Mobile Focused) */}
       <footer className="fixed bottom-0 w-full z-50 bg-white/95 backdrop-blur-xl px-4 py-4 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.05)] border-t border-surface-container md:hidden">
         <div className="flex flex-col gap-3">
-          <div className="flex justify-between items-center px-1 mb-1">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Security Deposit</p>
+              <p className="text-xl font-black text-indigo-600 tracking-tighter leading-none">₹{(room.rent_amount * 3).toLocaleString()}</p>
+            </div>
+            <button 
+              onClick={() => setIsDepositModalOpen(true)}
+              className="flex-[2] bg-indigo-600 text-white h-14 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <Lock size={16} /> Pay Deposit
+            </button>
+          </div>
+          
+          <div className="flex justify-between items-center px-1 py-1 border-t border-slate-50 mt-1">
             <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-outline-variant uppercase tracking-widest">Starting at</span>
-              <span className="text-xl font-headline font-extrabold text-primary">₹{room.rent_amount?.toLocaleString()}<span className="text-xs text-on-surface-variant font-medium">/mo</span></span>
+              <span className="text-[9px] font-bold text-outline-variant uppercase tracking-widest">Rent</span>
+              <span className="text-base font-headline font-extrabold text-primary leading-none">₹{room.rent_amount?.toLocaleString()}<span className="text-[10px] text-on-surface-variant font-medium">/mo</span></span>
             </div>
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="px-6 h-12 bg-primary text-white font-headline font-bold rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all"
+              className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5"
             >
-              Book Visit
+              Book Visit &rarr;
             </button>
           </div>
         </div>
@@ -598,6 +738,135 @@ export default function RoomDetail() {
         </div>
       )}
 
+       <DepositVaultModal 
+         isOpen={isDepositModalOpen} 
+         onClose={() => setIsDepositModalOpen(false)} 
+         amount={room.rent_amount * 3} 
+         room={room}
+         profile={profile}
+         initiateDeposit={initiateDeposit}
+         processing={depositLoading}
+       />
+
+    </div>
+  );
+}
+
+/**
+ * DEPOSIT VAULT (ESCROW) EXPLANATION:
+ * WHAT IT IS: A neutral third-party holding mechanism for sensitive funds.
+ * ANALOGY: REHWAS is like a trusted friend who holds the car keys during a trade 
+ * until both the buyer and seller are satisfied with the transaction. 
+ * This prevents "Deposit Scams" where landlords vanish after taking cash, 
+ * and also protects landlords from damage disputes.
+ * 
+ * @function DepositVaultModal
+ * @description
+ * What Razorpay Route is:
+ * Analogy: Like an ESCROW service where a bank holds funds between a buyer and seller 
+ * during a property deal. The money is "locked" until both parties fulfill their contract.
+ */
+function DepositVaultModal({ 
+  isOpen, 
+  onClose, 
+  amount, 
+  room, 
+  profile, 
+  initiateDeposit,
+  processing 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  amount: number;
+  room: any;
+  profile: any;
+  initiateDeposit: any;
+  processing: boolean;
+}) {
+  if (!isOpen) return null;
+
+  const handlePay = async () => {
+    if (!profile) {
+      toast.error('Please login to pay deposit');
+      return;
+    }
+    
+    await initiateDeposit({
+      tenantId: profile.id,
+      landlordId: room.landlord_id,
+      roomId: room.id,
+      amount: amount
+    });
+    
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose}></div>
+      <div className="bg-white w-full max-w-lg rounded-[32px] md:rounded-[3rem] overflow-hidden relative shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="p-8 md:p-10">
+          <div className="flex justify-between items-start mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
+                <Lock size={24} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black tracking-tight">Deposit Vault</h3>
+                <p className="text-slate-500 font-medium text-sm">REHWAS Escrow Protection</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="space-y-8 mb-10">
+            {[
+              { step: '01', title: 'Secure Payment', desc: `You pay ₹${amount.toLocaleString()} into the REHWAS Vault via Razorpay.` },
+              { step: '02', title: 'Held in Escrow', desc: 'REHWAS holds the funds safely. The landlord cannot touch this yet.' },
+              { step: '03', title: 'Released on Move-in', desc: "Once you move in and both sign the inspection report, funds are released to the landlord." }
+            ].map((s, i) => (
+              <div key={i} className="flex gap-6">
+                <div className="text-4xl font-black text-indigo-100 tracking-tighter">{s.step}</div>
+                <div>
+                  <h4 className="font-black text-slate-900 mb-1">{s.title}</h4>
+                  <p className="text-slate-500 text-sm font-medium leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-amber-50 border border-amber-100 p-6 rounded-[2.5rem] mb-8">
+            <h4 className="font-black text-amber-900 text-sm uppercase tracking-widest mb-2 flex items-center gap-2">
+              <ShieldCheck size={16} /> Dispute Protection
+            </h4>
+            <p className="text-amber-800/70 text-sm font-medium leading-relaxed">
+              Disagreements? REHWAS reviews your signed Move-in Photo Report to make a fair decision within 5 working days.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={handlePay}
+              disabled={processing}
+              className={`w-full py-5 rounded-[2rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 active:scale-95 transition-all flex items-center justify-center gap-2 ${processing ? 'bg-indigo-400 cursor-not-allowed text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+            >
+              {processing ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Processing...
+                </>
+              ) : (
+                <>Secure My Deposit — ₹{amount.toLocaleString()}</>
+              )}
+            </button>
+            <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+              Digital Receipt Issued Instantly
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -135,16 +135,34 @@ export const useLedger = () => {
 
   /**
    * Applies a utility bill split across multiple tenants for a specific month.
-   * WHAT IT DOES: Calculates a per-tenant share of a total bill and updates the ledger records.
+   * 
+   * WHAT IT DOES: 
+   * Calculates a per-tenant share of multiple bill categories (Electricity, Water, Maintenance, etc.)
+   * and updates their ledger records in a single batch.
+   * 
+   * WHY WE STORE utility_amount SEPARATELY:
+   * Analogy: Like a restaurant bill that separates "Food" from "Service Charge" or "VAT". 
+   * It allows landlords and tenants to clearly see what portion of the payment is for fixed rent 
+   * versus variable usage-based costs. This transparency prevents disputes during reconciliation.
    */
-  const applyBulkUtilityBill = async (landlordId: string, month: string, totalAmount: number, tenantIds: string[]) => {
+  const applySplit = async (
+    landlordId: string, 
+    month: string, 
+    billItems: { label: string; amount: number; enabled: boolean }[], 
+    tenantIds: string[]
+  ) => {
     setLoading(true);
     if (tenantIds.length === 0) {
       setLoading(false);
       return { error: new Error('No tenants selected') };
     }
 
-    const perTenantAmount = Math.round(totalAmount / tenantIds.length);
+    // Calculate total bill from all enabled categories
+    const totalToSplit = billItems
+      .filter(item => item.enabled)
+      .reduce((sum, item) => sum + (item.amount || 0), 0);
+
+    const perTenantAmount = Math.round(totalToSplit / tenantIds.length);
 
     const { error } = await supabase
       .from('rent_ledger')
@@ -154,7 +172,19 @@ export const useLedger = () => {
       .in('tenant_id', tenantIds);
     
     setLoading(false);
-    return { error };
+    return { error, totalToSplit, perTenantAmount };
+  };
+
+  /**
+   * @deprecated Use applySplit instead for multi-category support.
+   */
+  const applyBulkUtilityBill = async (landlordId: string, month: string, totalAmount: number, tenantIds: string[]) => {
+    return applySplit(
+      landlordId, 
+      month, 
+      [{ label: 'Electricity', amount: totalAmount, enabled: true }], 
+      tenantIds
+    );
   };
 
   /**
@@ -197,6 +227,7 @@ export const useLedger = () => {
     createLedgerEntries,
     getMonthlyTotal,
     applyBulkUtilityBill,
+    applySplit,
     calculateBhoomiScore
   };
 };

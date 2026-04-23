@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Room } from '@/types';
-import { MapPin, BedDouble, ShieldCheck, Wifi, Tv, Wind, Zap } from 'lucide-react';
+import { MapPin, BedDouble, ShieldCheck, Wifi, Tv, Wind, Zap, Moon } from 'lucide-react';
 import { VacantRoomCTA } from './EmptyState';
 
 
@@ -50,6 +50,16 @@ export const RoomCard: React.FC<RoomCardProps> = ({ room, compact = false }) => 
           <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 text-green-700 shadow-lg">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
             Available Now
+          </div>
+        )}
+        {room.street_video_url && (
+          <div className="absolute top-4 right-4 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 text-white shadow-xl border border-white/20">
+            <Moon size={12} className="fill-emerald-400 text-emerald-400" /> Night View
+          </div>
+        )}
+        {room.boosted_until && new Date(room.boosted_until) > new Date() && (
+          <div className="absolute top-16 right-4 bg-amber-400/95 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 text-amber-950 shadow-xl border border-amber-200">
+            <Zap size={12} className="fill-amber-900 text-amber-900" /> Featured ⚡
           </div>
         )}
       </div>

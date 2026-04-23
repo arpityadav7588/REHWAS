@@ -24,6 +24,9 @@ export const useRooms = () => {
     if (filters?.room_type) query = query.eq('room_type', filters.room_type);
     if (filters?.max_rent) query = query.lte('rent_amount', filters.max_rent);
 
+    query = query.order('boosted_until', { ascending: false, nullsFirst: false })
+                 .order('created_at', { ascending: false });
+
     const { data, error } = await query;
     setLoading(false);
     
@@ -56,9 +59,16 @@ export const useRooms = () => {
    */
   const addRoom = async (data: Partial<Room>) => {
     setLoading(true);
+    
+    const insertData = { ...data };
+    // Auto-set vacancy date if created as available
+    if (data.available === true) {
+      insertData.vacant_since = new Date().toISOString().split('T')[0];
+    }
+
     const { data: newRoom, error } = await supabase
       .from('rooms')
-      .insert([data])
+      .insert([insertData])
       .select()
       .single();
     setLoading(false);
@@ -67,14 +77,24 @@ export const useRooms = () => {
 
   /**
    * Updates an existing room's details.
-   * WHAT IT DOES: Modifies specific fields of an existing row in the 'rooms' table.
+   * WHAT IT DOES: Modifies specific fields and manages vacancy timestamps.
    * ANALOGY: Updating your property listing to say "Newly Painted!" instead of just "1BHK".
    */
   const updateRoom = async (id: string, data: Partial<Room>) => {
     setLoading(true);
+    
+    const updateData = { ...data };
+    
+    // Auto-manage vacant_since if availability is toggled
+    if (data.available === true) {
+      updateData.vacant_since = new Date().toISOString().split('T')[0];
+    } else if (data.available === false) {
+      updateData.vacant_since = null;
+    }
+
     const { error } = await supabase
       .from('rooms')
-      .update(data)
+      .update(updateData)
       .eq('id', id);
     setLoading(false);
     return { error };
@@ -89,7 +109,7 @@ export const useRooms = () => {
     setLoading(true);
     const { error } = await supabase
       .from('rooms')
-      .update({ available: false })
+      .update({ available: false, vacant_since: null })
       .eq('id', id);
     setLoading(false);
     return { error };

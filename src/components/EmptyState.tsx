@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, ArrowRight, Share2, MessageCircle, Zap } from 'lucide-react';
+import { ArrowRight, Share2, MessageCircle, Zap } from 'lucide-react';
 
 /**
  * UX PRINCIPLE: EMPTY STATES ARE ONBOARDING MOMENTS.
@@ -9,7 +9,7 @@ import { Plus, ArrowRight, Share2, MessageCircle, Zap } from 'lucide-react';
  * (e.g., "No data found"), we show a clear path forward.
  */
 
-type IllustrationType = 'rooms' | 'tenants' | 'ledger' | 'reminders' | 'finance' | 'chat' | 'house-plus' | 'people-door' | 'notebook' | 'confetti-check';
+type IllustrationType = 'rooms' | 'tenants' | 'ledger' | 'reminders' | 'finance' | 'chat' | 'house-plus' | 'people-door' | 'notebook' | 'confetti-check' | 'lock-key' | 'speech-bubbles' | 'magnifying-glass';
 
 interface EmptyStateProps {
   illustration: IllustrationType;
@@ -22,6 +22,7 @@ interface EmptyStateProps {
   // Support legacy props if needed during migration
   ctaLabel?: string;
   ctaOnClick?: () => void;
+  secondary?: { label: string; href: string; };
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({ 
@@ -33,7 +34,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   ctaHref,
   variant = 'full',
   ctaLabel,
-  ctaOnClick
+  ctaOnClick,
+  secondary
 }) => {
   // Resolve props
   const finalCtaText = ctaText || ctaLabel;
@@ -108,6 +110,25 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         <path d="M30 30H70V60H40L30 70V30Z" stroke="#E2E8F0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         <path d="M20 40H25M35 40H40M50 40H55" stroke="#F1F5F9" strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
       </svg>
+    ),
+    'lock-key': (
+      <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="30" y="45" width="40" height="35" rx="4" stroke="#E2E8F0" strokeWidth="2"/>
+        <path d="M40 45V35C40 29.4772 44.4772 25 50 25C55.5228 25 60 29.4772 60 35V45" stroke="#E2E8F0" strokeWidth="2"/>
+        <circle cx="50" cy="62" r="4" fill="#E2E8F0"/>
+      </svg>
+    ),
+    'speech-bubbles': (
+      <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M25 35H65V60H35L25 70V35Z" stroke="#E2E8F0" strokeWidth="2"/>
+        <path d="M75 45H35V20H65L75 30V45Z" stroke="#F1F5F9" strokeWidth="2" opacity="0.5"/>
+      </svg>
+    ),
+    'magnifying-glass': (
+      <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="45" cy="45" r="20" stroke="#E2E8F0" strokeWidth="2"/>
+        <path d="M60 60L80 80" stroke="#E2E8F0" strokeWidth="4" strokeLinecap="round"/>
+      </svg>
     )
   };
 
@@ -135,6 +156,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     return null;
   };
 
+  const RenderSecondary = () => {
+    if (!secondary) return null;
+    return (
+      <a 
+        href={secondary.href} 
+        className="mt-4 text-emerald-600 font-black text-[10px] uppercase tracking-widest hover:underline"
+      >
+        {secondary.label}
+      </a>
+    );
+  };
+
   return (
     <div className={`flex flex-col items-center justify-center text-center px-6 ${variant === 'full' ? 'py-20 bg-white rounded-[2.5rem] border border-slate-50' : 'py-10'}`}>
       <div className="mb-6 opacity-80 transition-transform hover:scale-110 duration-300">
@@ -145,6 +178,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         {description}
       </p>
       <RenderCTA />
+      <RenderSecondary />
     </div>
   );
 };

@@ -1,7 +1,5 @@
 /**
  * Represents a user profile in the system.
- * WHAT IT DOES: Defines the structure of user data, including their role (landlord or tenant) and verification status.
- * ANALOGY: A digital ID card or member profile in a residential club database.
  */
 export interface Profile {
   id: string;
@@ -9,10 +7,10 @@ export interface Profile {
   phone: string;
   role: 'landlord' | 'tenant';
   kyc_status: 'none' | 'pending' | 'verified' | 'rejected';
-  kyc_verified: boolean; // Keep for backward compatibility
+  kyc_verified: boolean;
   aadhaar_hash?: string;
   avatar_url?: string;
-  bhoomi_score?: number; // Numeric scale 300-900 (Bhoomi 2.0)
+  bhoomi_score?: number;
   plan: 'starter' | 'pro' | 'business';
   plan_expires_at?: string | null;
   trial_ends_at?: string | null;
@@ -49,8 +47,6 @@ export interface Profile {
 
 /**
  * Represents a rental property or room.
- * WHAT IT DOES: Defines the attributes of a room listing, such as rent amount, type, location, and amenities.
- * ANALOGY: An entry in a real estate catalog or a listing on a travel booking site.
  */
 export interface Room {
   id: string;
@@ -68,7 +64,7 @@ export interface Room {
   available: boolean;
   amenities: string[];
   photos: string[];
-  bhoomi_score?: number; // Numeric scale 300-900 (Bhoomi 2.0)
+  bhoomi_score?: number;
   bhoomi_grade?: 'A+' | 'A' | 'B+' | 'B';
   utility_billing_type?: 'fixed' | 'shared_headcount' | 'metered';
   utility_fixed_amount?: number;
@@ -78,13 +74,16 @@ export interface Room {
     nearest_bus_stop?: string;
     peak_traffic_multiplier?: number;
   };
+  street_video_url?: string | null;
+  vacant_since?: string | null;
+  expected_rent?: number;
+  late_fee_pct?: number;
+  boosted_until?: string | null;
   created_at: string;
 }
 
 /**
  * Represents a tenant's lease or stay information.
- * WHAT IT DOES: Associates a user profile with a specific room and tracks their move-in status.
- * ANALOGY: A tenant's entry in a landlord's physical lease agreement binder.
  */
 export interface Tenant {
   id: string;
@@ -98,8 +97,6 @@ export interface Tenant {
 
 /**
  * Represents a record of rent payments.
- * WHAT IT DOES: Tracks monthly rent dues, payment status, and notes for each tenant.
- * ANALOGY: A receipt book or account ledger tracking monthly dues.
  */
 export interface RentLedger {
   id: string;
@@ -111,14 +108,14 @@ export interface RentLedger {
   arrears?: number;
   status: 'paid' | 'unpaid' | 'partial';
   paid_on?: string;
+  due_date?: string;
+  late_fee_applied?: number;
   payment_mode?: 'cash' | 'upi' | 'bank';
   notes?: string;
 }
 
 /**
- * Represents a message between users in a room context.
- * WHAT IT DOES: Defines the structure of messages sent between landlords and tenants.
- * ANALOGY: A chat bubble or a letter sent between a resident and a property manager.
+ * Represents a message between users.
  */
 export interface Message {
   id: string;
@@ -136,7 +133,7 @@ export interface Expense {
   id: string;
   landlord_id: string;
   room_id?: string | null;
-  category: 'maintenance' | 'tax' | 'insurance' | 'repair' | 'other';
+  category: 'maintenance' | 'tax' | 'insurance' | 'repair' | 'loan_interest' | 'other';
   amount: number;
   description: string;
   expense_date: string;
@@ -153,19 +150,61 @@ export interface PLSummary {
   net: number;
 }
 
+/**
+ * DamageItem interface for inspections.
+ */
+export interface DamageItem {
+  id: string;
+  location: string;
+  type: 'scratch' | 'dent' | 'stain' | 'broken' | 'missing' | 'other';
+  severity: 'minor' | 'moderate' | 'severe';
+  repair_cost: number;
+  notes?: string;
+  photo_x?: number; // Normalized coordinate 0-100
+  photo_y?: number; // Normalized coordinate 0-100
+  photo_index?: number;
+  tenant_response?: string;
+  is_disputed?: boolean;
+}
+
+/**
+ * DepositEscrow tracking via Razorpay Route.
+ */
+export interface DepositEscrow {
+  id: string;
+  tenant_id: string;
+  landlord_id: string;
+  room_id: string;
+  amount: number;
+  status: 'held' | 'released' | 'disputed' | 'refunded';
+  razorpay_payment_id?: string;
+  razorpay_transfer_id?: string;
+  release_requested_at?: string;
+  released_at?: string;
+  dispute_reason?: string;
+  created_at: string;
+}
+
+/**
+ * Move-in/Move-out Report structure.
+ */
 export interface MoveInReport {
   id: string;
   tenant_id: string;
   room_id: string;
   landlord_id: string;
   photos: string[];
+  photo_labels?: string[];
   notes?: string;
   tenant_notes?: string;
   checklist: InspectionChecklist;
   meter_reading?: string;
   landlord_signed_at: string;
   tenant_signed_at?: string;
-  report_status: 'pending_tenant' | 'completed';
+  report_status: 'pending_landlord' | 'pending_tenant' | 'signed' | 'completed';
+  type: 'move_in' | 'move_out';
+  damage_items?: DamageItem[];
+  total_damages_amount?: number;
   created_at: string;
 }
 
@@ -183,9 +222,6 @@ export interface InspectionChecklist {
   deposit_receipt_given: boolean;
 }
 
-/**
- * Represents a user notification.
- */
 export interface Notification {
   id: string;
   user_id: string;
@@ -197,3 +233,17 @@ export interface Notification {
   created_at: string;
 }
 
+export interface TenantCV {
+  id: string;
+  tenant_profile_id: string;
+  on_time_payment_pct: number;
+  total_months_tracked: number;
+  paid_on_time_count: number;
+  paid_late_count: number;
+  unpaid_count: number;
+  rent_health_grade: 'A' | 'B' | 'C' | 'N/A';
+  last_calculated_at: string;
+  created_at: string;
+}
+
+// EOF

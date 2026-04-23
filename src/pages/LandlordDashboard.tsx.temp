@@ -1,0 +1,95 @@
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { useRooms } from '@/hooks/useRooms';
+import { useLedger } from '@/hooks/useLedger';
+import { usePL } from '@/hooks/usePL';
+import { MoveInReportModal } from '@/components/MoveInReportModal';
+import { RentLedgerTable } from '@/components/RentLedgerTable';
+import { RoomCard } from '@/components/RoomCard';
+import type { Tenant, RentLedger } from '@/types';
+import toast from 'react-hot-toast';
+import { format, parseISO, subMonths } from 'date-fns';
+import { 
+  Home, Users, BookOpen, Bell, Plus, IndianRupee, Key, 
+  DoorOpen, Edit, Trash2, ShieldAlert, Phone, Send, FileText, Download, X,
+  Camera, Lock, Check, Info, Receipt, BarChart3, Sparkles, TrendingUp,
+  AlertTriangle, Zap, Wrench, Droplets, PlusCircle, Trash, Calculator, History, ChevronDown, ChevronUp 
+} from 'lucide-react';
+import { DigitalDossier } from '@/components/DigitalDossier';
+import { VerificationCenter } from '@/components/VerificationCenter';
+import { TenantRentScore } from '@/components/TenantRentScore';
+import { FeatureGate } from '@/components/FeatureGate';
+import { OnboardingChecklist } from '@/components/OnboardingChecklist';
+import { EmptyState } from '@/components/EmptyState';
+import { VacancyBleedCard } from '@/components/VacancyBleedCard';
+
+
+/**
+ * Extended Tenant Type for Dashboard
+ */
+interface TenantExtended extends Tenant {
+  profiles?: { full_name: string; phone: string; } | null;
+  rooms?: { title: string; } | null;
+}
+
+interface RentLedgerExtended extends RentLedger {
+  tenants?: {
+    room_id: string;
+    tenant_profile_id: string;
+    profiles?: {
+      full_name: string;
+      phone: string;
+    } | null;
+  } | null;
+}
+
+/**
+ * Landlord Dashboard
+ * WHAT IT DOES: The central hub for a landlord to manage properties, track rent via KhataBook style ledger, and view statistics.
+ */
+export default function LandlordDashboard() {
+  const navigate = useNavigate();
+  const { profile, loading: authLoading, updateProfile } = useAuth();
+  const { rooms, fetchRooms, deleteRoom, updateRoom, loading: roomsLoading } = useRooms();
+  const { fetchLedger, getMonthlyTotal, createLedgerEntries, updateLedgerEntry } = useLedger();
+
+  // Selected Tab State
+  const [activeTab, setActiveTab] = useState<'rooms' | 'tenants' | 'ledger' | 'reminders' | 'pl'>('rooms');
+  
+  // Data States
+  const [loading, setLoading] = useState(true);
+  const [tenants, setTenants] = useState<TenantExtended[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<RentLedgerExtended[]>([]);
+  const [rentCollected, setRentCollected] = useState(0);
+  
+  // P&L State
+  const { fetchPLData, addExpense } = usePL();
+  const [plSummary, setPlSummary] = useState<any[]>([]);
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseRoomId, setExpenseRoomId] = useState<string | null>(null);
+  const [selectedMoveInTenant, setSelectedMoveInTenant] = useState<any>(null);
+  const [isMoveInReportModalOpen, setIsMoveInReportModalOpen] = useState(false);
+  const [selectedDepositTenant, setSelectedDepositTenant] = useState<any>(null);
+
+  // Dossier State
+  const [selectedDossierTenant, setSelectedDossierTenant] = useState<any>(null);
+
+  // Utility Billing Modal States
+  const { applySplit } = useLedger();
+  const [isUtilModalOpen, setIsUtilModalOpen] = useState(false);
+  const [utilMonth, setUtilMonth] = useState(format(new Date(), 'MMM yyyy'));
+  const [selectedTenantsForUtil, setSelectedTenantsForUtil] = useState<string[]>([]);
+  const [applyingUtil, setApplyingUtil] = useState(false);
+  const [billItems, setBillItems] = useState([
+    { id: 'elec', label: 'Electricity Bill', amount: 0, enabled: true, icon: Zap, helper: 'Enter total building bill from MSEB/BESCOM/BSES' },
+    { id: 'maint', label: 'Maintenance Fee', amount: 0, enabled: false, icon: Wrench, helper: 'Society maintenance, security, cleaning charges' },
+    { id: 'water', label: 'Water Bill', amount: 0, enabled: false, icon: Droplets, helper: 'Water tanker or municipal water charges' },
+  ]);
+  const [customItems, setCustomItems] = useState<{ id: string; label: string; amount: number }[]>([]);
+  const [splitMethod, setSplitMethod] = useState<'equal' | 'size'>('equal');
+  const [showHistory, setShowHistory] = useState(false);
+  const [previousSplits, setPreviousSplits] = useState<any[]>([]);
+
+  // Add Tenant Modal States

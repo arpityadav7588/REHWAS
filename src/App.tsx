@@ -14,11 +14,13 @@ import LandlordDashboard from '@/pages/LandlordDashboard';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
 import { RentReceipt } from '@/components/RentReceipt';
-import { MoveInReportView } from '@/components/MoveInReportView';
+import MoveInReport from '@/pages/MoveInReport';
+import DamagesCalculator from '@/pages/DamagesCalculator';
 import { RentBuddy } from '@/components/RentBuddy';
 
 import Pricing from '@/pages/Pricing';
 import Notifications from '@/pages/Notifications';
+import TenantCV from '@/pages/TenantCV';
 
 
 const queryClient = new QueryClient();
@@ -76,7 +78,10 @@ function App() {
               <Route path="/room/:id" element={<RoomDetail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/receipt/:id" element={<RentReceipt />} />
-              <Route path="/move-in-report/:id" element={<MoveInReportView />} />
+              <Route path="/move-in-report/:id" element={<MoveInReport />} />
+              <Route path="/move-out-report/:id" element={<MoveInReport />} />
+              <Route path="/damages/:tenantId" element={<DamagesCalculator />} />
+              <Route path="/tenant-cv/:tenantProfileId" element={<TenantCV />} />
             </Route>
           </Routes>
         </AuthProvider>

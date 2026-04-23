@@ -163,20 +163,26 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                             className={`p-3 rounded-[1.5rem] border-2 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all hover:scale-[1.05] active:scale-95 no-print-bg shadow-sm hover:shadow-md
                               ${entry.status === 'paid' ? 'bg-emerald-50 border-emerald-100 hover:border-emerald-300' : 
                                 entry.status === 'partial' ? 'bg-orange-50 border-orange-100 hover:border-orange-300' : 
+                                (entry.late_fee_applied || 0) > 0 ? 'bg-red-100 border-red-200 hover:border-red-400 animate-pulse' :
                                 'bg-rose-50 border-rose-100 hover:border-rose-300'}`}
                           >
                             <div className="flex flex-col items-center">
-                               <span className={`text-[10px] font-black uppercase tracking-widest ${entry.status === 'paid' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                 {entry.status}
+                               <span className={`text-[10px] font-black uppercase tracking-widest ${entry.status === 'paid' ? 'text-emerald-600' : (entry.late_fee_applied || 0) > 0 ? 'text-red-700' : 'text-rose-600'}`}>
+                                 {entry.status}{(entry.late_fee_applied || 0) > 0 && ' + LATE FEE'}
                                </span>
-                               <span className="text-lg font-black text-dark">₹{(entry.amount + utility).toLocaleString()}</span>
+                               <span className={`text-lg font-black ${ (entry.late_fee_applied || 0) > 0 ? 'text-red-800' : 'text-dark'}`}>
+                                 ₹{(entry.amount + utility + (entry.late_fee_applied || 0)).toLocaleString()}
+                               </span>
                             </div>
                             
-                            {(utility > 0 || isTotalUnpaid) && (
+                            {(utility > 0 || (entry.late_fee_applied || 0) > 0 || isTotalUnpaid) && (
                               <div className="flex flex-wrap justify-center gap-1 mt-1">
                                  <div className="bg-white/60 text-[9px] px-1.5 py-0.5 rounded-md font-bold text-slate-500 border border-slate-100">Rent: {entry.amount}</div>
                                  {utility > 0 && (
                                    <div className="bg-indigo-50 text-[9px] px-1.5 py-0.5 rounded-md font-bold text-indigo-600 border border-indigo-100">Util: {utility}</div>
+                                 )}
+                                 {(entry.late_fee_applied || 0) > 0 && (
+                                   <div className="bg-red-50 text-[9px] px-1.5 py-0.5 rounded-md font-bold text-red-600 border border-red-100" title={`Due was: ${entry.due_date}`}>Late: {entry.late_fee_applied}</div>
                                  )}
                               </div>
                             )}
@@ -256,6 +262,37 @@ export const RentLedgerTable: React.FC<RentLedgerTableProps> = ({ ledgerEntries,
                      onChange={(e) => setEditUtility(e.target.value)}
                      className="w-full px-4 py-3 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 outline-none transition-all font-bold text-indigo-900 text-base"
                    />
+                </div>
+
+                {selectedCell.late_fee_applied && selectedCell.late_fee_applied > 0 && (
+                  <div className="bg-red-50 border border-red-100 p-4 rounded-2xl">
+                    <div className="flex justify-between items-center mb-2">
+                       <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Late Fee (Automated)</span>
+                       <span className="text-lg font-black text-red-700">₹{selectedCell.late_fee_applied}</span>
+                    </div>
+                    <p className="text-[10px] font-medium text-red-500 leading-tight">
+                      This fee was applied on {selectedCell.due_date ? format(new Date(selectedCell.due_date), 'MMM dd') : 'due date'} because rent was overdue by 5+ days.
+                    </p>
+                    <button 
+                      onClick={() => {
+                        const fee = selectedCell.late_fee_applied || 0;
+                        toast.success(`Late fee of ₹${fee} waived for this month.`);
+                        // We'll update the database to clear the late fee
+                        onUpdate(selectedCell.id, { late_fee_applied: 0 });
+                        setSelectedCell({...selectedCell, late_fee_applied: 0});
+                      }}
+                      className="mt-3 text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
+                    >
+                      Waive Late Fee
+                    </button>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-gray-100">
+                   <div className="flex justify-between items-center px-1">
+                      <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Total Due</span>
+                      <span className="text-2xl font-black text-gray-900">₹{(parseFloat(editAmount || '0') + parseFloat(editUtility || '0') + (selectedCell.late_fee_applied || 0)).toLocaleString()}</span>
+                   </div>
                 </div>
 
                  <div>
