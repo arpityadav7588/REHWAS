@@ -20,7 +20,9 @@ import {
   Star,
   Sparkles,
   Check,
-  ArrowUpRight
+  ArrowUpRight,
+  Lock,
+  Plus
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'react-hot-toast';
@@ -192,7 +194,6 @@ export const AppShell = ({ children }: { children?: React.ReactNode }) => {
             </button>
           </div>
         )}
-      </div>
 
       {/* Navigation */}
       <div className="flex-1 px-3 py-4 space-y-8">
@@ -216,6 +217,12 @@ export const AppShell = ({ children }: { children?: React.ReactNode }) => {
             active={isTabActive('rooms')} 
           />
           <NavItem 
+            to="/add-room" 
+            icon={Plus} 
+            label="Add Room" 
+            active={isPathActive('/add-room')} 
+          />
+          <NavItem 
             to="/dashboard?tab=tenants" 
             icon={Users} 
             label="Tenants" 
@@ -232,6 +239,12 @@ export const AppShell = ({ children }: { children?: React.ReactNode }) => {
             icon={Bell} 
             label="Reminders" 
             active={isTabActive('reminders')} 
+          />
+          <NavItem 
+            to="/deposit-vault" 
+            icon={Lock} 
+            label="Deposit Vault" 
+            active={isPathActive('/deposit-vault')} 
           />
         </div>
 
@@ -373,7 +386,7 @@ export const AppShell = ({ children }: { children?: React.ReactNode }) => {
   );
 
   // If not a landlord, just render children (existing header/footer handles them)
-  if (!isLandlord) return <>{children}</>;
+  if (!isLandlord) return <>{children || <Outlet />}</>;
 
   return (
     <div className="flex min-h-screen bg-surface">
@@ -409,19 +422,23 @@ export const AppShell = ({ children }: { children?: React.ReactNode }) => {
       {/* Main Content */}
       <div className="flex-1 lg:ml-[240px] flex flex-col min-h-screen">
         {/* Mobile Header Top Bar */}
-        <header className="lg:hidden h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 sticky top-0 z-30">
+        <header className="lg:hidden h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-black text-[10px]">
               R
             </div>
             <span className="font-black text-dark tracking-tighter text-base uppercase">REHWAS</span>
           </div>
-          <button 
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 bg-slate-50 text-slate-600 rounded-xl"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 bg-slate-50 text-slate-600 rounded-xl"
+              aria-label="Open menu"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 p-6 lg:p-10 max-w-7xl mx-auto w-full">

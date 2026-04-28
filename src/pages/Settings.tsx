@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { 
-  User, CreditCard, Bell, Shield, AlertTriangle, 
-  Upload, Check, Download, Trash2, IndianRupee, 
-  Eye, Sparkles, Send, Phone, Mail, Users, Zap, Puzzle,
-  ChevronRight, ExternalLink, FileText, Globe, Plus, X
+  User, CreditCard, Bell, AlertTriangle, 
+  Upload, Check, Users, Puzzle,
+  Download, Plus, X, Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { format } from 'date-fns';
 import { FeatureGate } from '@/components/FeatureGate';
 
 /**
@@ -131,8 +130,8 @@ const Settings: React.FC = () => {
                 profile={profile}
               />}
               {activeSection === 'billing' && <BillingSection profile={profile} navigate={navigate} />}
-              {activeSection === 'notifications' && <NotificationsSection profile={profile} updateProfile={updateProfile} />}
-              {activeSection === 'team' && <TeamSection profile={profile} />}
+              {activeSection === 'notifications' && <NotificationsSection />}
+              {activeSection === 'team' && <TeamSection />}
               {activeSection === 'integrations' && <IntegrationsSection />}
               {activeSection === 'danger' && <DangerZoneSection profile={profile} signOut={signOut} />}
             </div>
@@ -417,7 +416,7 @@ const UsageCard = ({ label, value, progress, color, hint }: any) => (
  * we ensure they only see what matters, reducing "Dashboard Fatigue" and 
  * keeping them engaged with critical tenant interactions.
  */
-const NotificationsSection = ({ profile, updateProfile }: any) => {
+const NotificationsSection = () => {
   return (
     <div className="space-y-12">
       <section className="space-y-6">
@@ -455,9 +454,8 @@ const NotificationsSection = ({ profile, updateProfile }: any) => {
  * This section turns REHWAS from a solo tool into a collaborative platform, 
  * justifying the Business tier for larger operations.
  */
-const TeamSection = ({ profile }: any) => {
+const TeamSection = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const isBusiness = profile?.plan === 'business';
 
   const members = [
     { name: 'Karthik Raja', email: 'karthik@rehwas.com', role: 'Owner', date: 'Jan 2024', avatar: '' },
@@ -609,7 +607,7 @@ const IntegrationsSection = () => (
  * when they know they can export it or delete it instantly. 
  * "Data Portability" is a key SaaS trust signal.
  */
-const DangerZoneSection = ({ profile, signOut }: any) => {
+const DangerZoneSection = ({ signOut }: any) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);

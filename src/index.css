@@ -10,11 +10,14 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #F8FAFC; /* surface color */
+  background-color: #F8FAFC;
+}
+
+/* Safe-area padding for iPhone notch / Android nav bar */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 h1 {

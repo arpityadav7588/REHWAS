@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowRight, MessageSquare, Check, Star, Smartphone, Shield,
-  Zap, BookOpen, FileText, Calendar, BarChart2, Map, Building2, Users
+  Zap, BookOpen, FileText, Calendar, BarChart2, Map, Building2, Users,
+  ShieldCheck, Lock, Camera, TrendingUp
 } from 'lucide-react';
 
 /**
@@ -19,7 +21,7 @@ import {
  * WHY: High-end SaaS products show the "Inside" to build trust.
  * This is a styled HTML representation of the rent ledger dashboard.
  */
-const ProductHero = () => (
+const ProductHero = ({ persona }: { persona: 'landlord' | 'tenant' }) => (
   <div className="relative mt-20 max-w-5xl mx-auto p-4 bg-slate-900 rounded-[2.5rem] shadow-2xl shadow-emerald-500/10 border border-slate-800 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-300">
     <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/20 rounded-full blur-3xl" />
     <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl" />
@@ -32,7 +34,7 @@ const ProductHero = () => (
         <div className="w-3 h-3 rounded-full bg-emerald-500/20" />
       </div>
       <div className="mx-auto bg-slate-800/50 rounded-lg px-4 py-1 text-[10px] text-slate-500 font-mono">
-        rehwas.in/dashboard/ledger
+        {persona === 'landlord' ? 'rehwas.in/dashboard/ledger' : 'rehwas.in/discover/room-72b'}
       </div>
     </div>
 
@@ -42,77 +44,117 @@ const ProductHero = () => (
       <div className="col-span-3 space-y-3 opacity-40 hidden md:block">
         <div className="h-4 bg-slate-800 rounded w-full" />
         <div className="h-4 bg-slate-800 rounded w-3/4" />
-        <div className="h-4 bg-emerald-500/20 rounded w-full border border-emerald-500/30" />
+        <div className={`h-4 rounded w-full border ${persona === 'landlord' ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-slate-800 border-transparent'}`} />
         <div className="h-4 bg-slate-800 rounded w-2/3" />
         <div className="h-24 bg-slate-800/50 rounded-xl mt-10" />
       </div>
 
       {/* Main Content Mock */}
       <div className="col-span-12 md:col-span-9 space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="h-8 bg-slate-700 rounded-lg w-48" />
-          <div className="flex gap-2">
-            <div className="h-8 bg-emerald-500 rounded-lg w-24" />
-            <div className="h-8 bg-slate-800 rounded-lg w-8" />
-          </div>
-        </div>
+        {persona === 'landlord' ? (
+          <>
+            <div className="flex justify-between items-center">
+              <div className="h-8 bg-slate-700 rounded-lg w-48" />
+              <div className="flex gap-2">
+                <div className="h-8 bg-emerald-500 rounded-lg w-24" />
+                <div className="h-8 bg-slate-800 rounded-lg w-8" />
+              </div>
+            </div>
 
-        {/* Ledger Matrix */}
-        <div className="bg-slate-800/30 border border-slate-700 rounded-2xl overflow-hidden">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-slate-700">
-                <th className="p-4 text-[10px] font-black text-slate-500 uppercase">Tenant</th>
-                <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">JAN</th>
-                <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">FEB</th>
-                <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">MAR</th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-400 font-bold text-xs">
-              {[
-                { name: 'Aditya K.', status: ['emerald', 'emerald', 'emerald'] },
-                { name: 'Sonal M.', status: ['emerald', 'emerald', 'amber'] },
-                { name: 'Rahul V.', status: ['emerald', 'rose', 'rose'] },
-                { name: 'Megha S.', status: ['emerald', 'emerald', 'emerald'] }
-              ].map((row, i) => (
-                <tr key={i} className="border-b border-slate-700/50">
-                  <td className="p-4 text-white">{row.name}</td>
-                  {row.status.map((st, j) => (
-                    <td key={j} className="p-4">
-                      <div className={`h-6 w-full rounded-md flex items-center justify-center ${
-                        st === 'emerald' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30' :
-                        st === 'amber' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' :
-                        'bg-rose-500/20 text-rose-500 border border-rose-500/30'
-                      }`}>
-                        {st === 'emerald' ? 'PAID' : st === 'amber' ? 'DUE' : 'MISS'}
-                      </div>
-                    </td>
+            {/* Ledger Matrix */}
+            <div className="bg-slate-800/30 border border-slate-700 rounded-2xl overflow-hidden">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="p-4 text-[10px] font-black text-slate-500 uppercase">Tenant</th>
+                    <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">JAN</th>
+                    <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">FEB</th>
+                    <th className="p-4 text-[10px] font-black text-slate-500 uppercase text-center">MAR</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-400 font-bold text-xs">
+                  {[
+                    { name: 'Aditya K.', status: ['emerald', 'emerald', 'emerald'] },
+                    { name: 'Sonal M.', status: ['emerald', 'emerald', 'amber'] },
+                    { name: 'Rahul V.', status: ['emerald', 'rose', 'rose'] },
+                    { name: 'Megha S.', status: ['emerald', 'emerald', 'emerald'] }
+                  ].map((row, i) => (
+                    <tr key={i} className="border-b border-slate-700/50">
+                      <td className="p-4 text-white">{row.name}</td>
+                      {row.status.map((st, j) => (
+                        <td key={j} className="p-4">
+                          <div className={`h-6 w-full rounded-md flex items-center justify-center ${
+                            st === 'emerald' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30' :
+                            st === 'amber' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' :
+                            'bg-rose-500/20 text-rose-500 border border-rose-500/30'
+                          }`}>
+                            {st === 'emerald' ? 'PAID' : st === 'amber' ? 'DUE' : 'MISS'}
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                </tbody>
+              </table>
+            </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div className="h-20 bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-2">
-            <div className="h-2 bg-slate-600 rounded w-1/2" />
-            <div className="h-6 bg-emerald-500/20 rounded w-3/4" />
+            <div className="grid grid-cols-3 gap-4">
+              <div className="h-20 bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-2">
+                <div className="h-2 bg-slate-600 rounded w-1/2" />
+                <div className="h-6 bg-emerald-500/20 rounded w-3/4" />
+              </div>
+              <div className="h-20 bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-2">
+                <div className="h-2 bg-slate-600 rounded w-1/2" />
+                <div className="h-6 bg-amber-500/20 rounded w-3/4" />
+              </div>
+              <div className="h-20 bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-2">
+                <div className="h-2 bg-slate-600 rounded w-1/2" />
+                <div className="h-6 bg-rose-500/20 rounded w-3/4" />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-6">
+            <div className="aspect-video bg-slate-800 rounded-3xl border border-slate-700 flex items-center justify-center relative overflow-hidden group">
+               <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-60" />
+               <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                 <Camera className="w-8 h-8 text-white" />
+               </div>
+               <div className="absolute bottom-6 left-6 right-6">
+                 <div className="h-4 bg-white/20 rounded w-1/3 mb-2" />
+                 <div className="h-2 bg-white/10 rounded w-1/2" />
+               </div>
+               <div className="absolute top-6 right-6 bg-emerald-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+                 Live Night View
+               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+               <div className="p-6 bg-slate-800/50 rounded-3xl border border-slate-700 space-y-4">
+                 <div className="flex items-center justify-between">
+                   <div className="h-4 bg-slate-600 rounded w-24" />
+                   <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                 </div>
+                 <div className="text-3xl font-black text-white italic">A+ Grade</div>
+                 <div className="h-2 bg-slate-700 rounded w-full" />
+               </div>
+               <div className="p-6 bg-slate-800/50 rounded-3xl border border-slate-700 space-y-4">
+                 <div className="h-4 bg-slate-600 rounded w-24" />
+                 <div className="text-3xl font-black text-white italic">₹14,500</div>
+                 <div className="flex gap-1">
+                   {[1,2,3,4,5].map(s => <Star key={s} size={10} fill="#fbbf24" className="text-amber-400" />)}
+                 </div>
+               </div>
+            </div>
+            <div className="h-14 bg-emerald-600 rounded-2xl flex items-center justify-center font-black text-white uppercase tracking-widest text-sm shadow-xl shadow-emerald-900/20">
+              Direct Contact Landlord
+            </div>
           </div>
-          <div className="h-20 bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-2">
-            <div className="h-2 bg-slate-600 rounded w-1/2" />
-            <div className="h-6 bg-amber-500/20 rounded w-3/4" />
-          </div>
-          <div className="h-20 bg-slate-800/50 rounded-2xl border border-slate-700 p-4 space-y-2">
-            <div className="h-2 bg-slate-600 rounded w-1/2" />
-            <div className="h-6 bg-rose-500/20 rounded w-3/4" />
-          </div>
-        </div>
+        )}
       </div>
     </div>
 
-    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-white text-dark px-6 py-2 rounded-full shadow-xl font-black text-xs uppercase tracking-widest border border-slate-100 z-20">
-      The landlord dashboard that actually makes sense
+    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-white text-dark px-6 py-2 rounded-full shadow-xl font-black text-xs uppercase tracking-widest border border-slate-100 z-20 whitespace-nowrap">
+      {persona === 'landlord' ? 'The landlord dashboard that actually makes sense' : 'Rent with verified trust and transparency'}
     </div>
   </div>
 );
@@ -196,6 +238,48 @@ const PricingPreview = () => (
 
 export default function Home() {
   const navigate = useNavigate();
+  const [persona, setPersona] = useState<'landlord' | 'tenant'>('landlord');
+
+  const content = {
+    landlord: {
+      badge: "Built for Indian Landlords",
+      headline: <>Run your rental properties <br className="hidden md:block" /> <span className="text-emerald-600">like a business.</span></>,
+      subheadline: "REHWAS is property management software for Indian landlords — rent tracking, tenant management, utility billing, and verified tenant discovery in one place.",
+      cta: "Start free — no credit card",
+      secondary: "See how it works",
+      socialProof: "Trusted by 2,400+ landlords"
+    },
+    tenant: {
+      badge: "For the Modern Indian Tenant",
+      headline: <>Find your next home <br className="hidden md:block" /> <span className="text-emerald-600">without the drama.</span></>,
+      subheadline: "REHWAS is the trust-first rental ecosystem. Verified landlords, secure deposits, and honest street-safety videos from people who actually live there.",
+      cta: "Find a Room — No Broker",
+      secondary: "Check your Rent Grade",
+      socialProof: "Join 15,000+ verified seekers"
+    }
+  };
+
+  const features = {
+    landlord: [
+      { icon: BookOpen, title: "Smart Rent Ledger", desc: "A Matrix-view of your portfolio. Track who paid, who's due, and who's missing at a glance.", color: "bg-emerald-50 text-emerald-600" },
+      { icon: Zap, title: "Urja Bill Splitter", desc: "Divide shared electricity and water bills among tenants with one click. Send to WhatsApp instantly.", color: "bg-blue-50 text-blue-600" },
+      { icon: FileText, title: "Digital Records", desc: "Store tenant KYC, dossiers, and receipts in the cloud. Never lose a rent agreement again.", color: "bg-amber-50 text-amber-600" },
+      { icon: Calendar, title: "Lease Calendar", desc: "Automatic alerts for renewals and dues. Know exactly when a lease is ending.", color: "bg-purple-50 text-purple-600" },
+      { icon: BarChart2, title: "P&L Reports", desc: "Detailed income vs expense reports. Know your actual property yield. Ready for your CA.", color: "bg-rose-50 text-rose-600" },
+      { icon: Smartphone, title: "WhatsApp Reminders", desc: "Professional, polite payment reminders sent via WhatsApp. Replaces awkward collections.", color: "bg-emerald-50 text-emerald-600" }
+    ],
+    tenant: [
+      { icon: ShieldCheck, title: "Bhoomi Score", desc: "Verify landlord identity and property authenticity before you pay a single rupee.", color: "bg-emerald-50 text-emerald-600" },
+      { icon: Lock, title: "Deposit Vault", desc: "Secure your security deposit in our escrow. Released only after a mutual move-in report.", color: "bg-blue-50 text-blue-600" },
+      { icon: Camera, title: "Street Night View", desc: "Real videos of the street at night uploaded by residents. See the lighting and safety for yourself.", color: "bg-amber-50 text-amber-600" },
+      { icon: TrendingUp, title: "Rent Health Grade", desc: "Build a premium renter profile by paying on time. Get lower deposits on your next home.", color: "bg-purple-50 text-purple-600" },
+      { icon: FileText, title: "Digital Receipts", desc: "Every payment generates a professional, CA-approved rent receipt for your HRA claims.", color: "bg-rose-50 text-rose-600" },
+      { icon: MessageSquare, title: "Direct Chat", desc: "Talk directly to landlords. No brokers, no hidden fees, and no middleman drama.", color: "bg-emerald-50 text-emerald-600" }
+    ]
+  };
+
+  const active = content[persona];
+  const activeFeatures = features[persona];
 
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-emerald-100 select-none overflow-x-hidden">
@@ -205,34 +289,54 @@ export default function Home() {
       */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-40 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 text-center relative z-10">
+          
+          {/* Persona Toggle */}
+          <div className="flex justify-center mb-12">
+            <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1">
+              <button 
+                onClick={() => setPersona('landlord')}
+                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                  persona === 'landlord' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                Landlord
+              </button>
+              <button 
+                onClick={() => setPersona('tenant')}
+                className={`px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                  persona === 'tenant' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                Tenant
+              </button>
+            </div>
+          </div>
+
           <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
             <Zap size={14} fill="currentColor" />
-            <span className="text-xs font-black uppercase tracking-widest">Built for Indian Landlords</span>
+            <span className="text-xs font-black uppercase tracking-widest">{active.badge}</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-dark tracking-tighter leading-[0.9] mb-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            Run your rental properties <br className="hidden md:block" /> 
-            <span className="text-emerald-600">like a business.</span>
+            {active.headline}
           </h1>
           
           <p className="mt-6 text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed animate-in fade-in slide-in-from-bottom-10 duration-1000">
-            REHWAS is property management software for Indian landlords — 
-            rent tracking, tenant management, utility billing, and verified tenant discovery 
-            in one place.
+            {active.subheadline}
           </p>
 
           <div className="mt-12 flex flex-col sm:flex-row justify-center gap-6 animate-in fade-in zoom-in-95 duration-1000 delay-500">
             <button 
-              onClick={() => navigate('/login')}
+              onClick={() => navigate(persona === 'landlord' ? '/login' : '/discover')}
               className="px-10 py-5 bg-emerald-600 text-white text-lg font-black rounded-2xl shadow-2xl shadow-emerald-600/30 hover:bg-emerald-700 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3"
             >
-              Start free — no credit card <ArrowRight className="w-5 h-5" />
+              {active.cta} <ArrowRight className="w-5 h-5" />
             </button>
             <a 
-              href="#product"
+              href={persona === 'landlord' ? "#product" : "/profile"}
               className="px-10 py-5 bg-white text-dark text-lg font-black rounded-2xl border-2 border-slate-100 hover:border-emerald-200 hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 active:scale-95"
             >
-              See how it works
+              {active.secondary}
             </a>
           </div>
 
@@ -241,7 +345,7 @@ export default function Home() {
               <Check size={12} className="text-emerald-500" strokeWidth={4} /> Free forever for up to 3 rooms
             </div>
             <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
-              <Users size={12} className="text-emerald-500" /> Trusted by 2,400+ landlords
+              <Users size={12} className="text-emerald-500" /> {active.socialProof}
             </div>
             <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
               🇮🇳 Made in India
@@ -250,7 +354,7 @@ export default function Home() {
         </div>
 
         <div id="product" className="px-6">
-          <ProductHero />
+          <ProductHero persona={persona} />
         </div>
       </section>
 
@@ -260,47 +364,27 @@ export default function Home() {
       <section className="py-32 lg:py-48 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-24 max-w-3xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-black text-dark tracking-tight mb-6">Everything your properties need</h2>
-            <p className="text-lg text-slate-500 font-medium">Stop using notebooks and WhatsApp messages. Use the first property engine built for the Indian rental market.</p>
+            <h2 className="text-4xl md:text-5xl font-black text-dark tracking-tight mb-6">
+              {persona === 'landlord' ? "Everything your properties need" : "Everything you need for a safe home"}
+            </h2>
+            <p className="text-lg text-slate-500 font-medium">
+              {persona === 'landlord' 
+                ? "Stop using notebooks and WhatsApp messages. Use the first property engine built for the Indian rental market."
+                : "Stop falling for fake listings and broker drama. Use the first rental ecosystem built for trust."
+              }
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            <FeatureCard 
-              icon={BookOpen}
-              title="Smart Rent Ledger"
-              desc="A Matrix-view of your portfolio. Track who paid, who's due, and who's missing at a glance. No math required."
-              color="bg-emerald-50 text-emerald-600"
-            />
-            <FeatureCard 
-              icon={Zap}
-              title="Urja Bill Splitter"
-              desc="Divide shared electricity and water bills among tenants with one click. Send itemized bills to WhatsApp instantly."
-              color="bg-blue-50 text-blue-600"
-            />
-            <FeatureCard 
-              icon={FileText}
-              title="Digital Records"
-              desc="Store tenant KYC, dossiers, and receipts in the cloud. Never lose a rent agreement again."
-              color="bg-amber-50 text-amber-600"
-            />
-            <FeatureCard 
-              icon={Calendar}
-              title="Lease Calendar"
-              desc="Automatic alerts for renewals and dues. Know exactly when a lease is ending before it happens."
-              color="bg-purple-50 text-purple-600"
-            />
-            <FeatureCard 
-              icon={BarChart2}
-              title="P&L Reports"
-              desc="Detailed income vs expense reports. Know your actual property yield. Ready to export for your CA."
-              color="bg-rose-50 text-rose-600"
-            />
-            <FeatureCard 
-              icon={Smartphone}
-              title="WhatsApp Reminders"
-              desc="Professional, polite payment reminders sent via WhatsApp. Replaces awkward face-to-face collections."
-              color="bg-emerald-50 text-emerald-600"
-            />
+            {activeFeatures.map((feat, i) => (
+              <FeatureCard 
+                key={i}
+                icon={feat.icon}
+                title={feat.title}
+                desc={feat.desc}
+                color={feat.color}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -315,12 +399,18 @@ export default function Home() {
           <div className="flex-1 space-y-10">
             <div className="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-4 py-2 rounded-full border border-emerald-500/20">
               <Map size={14} />
-              <span className="text-xs font-black uppercase tracking-widest">Bonus Feature: Discovery</span>
+              <span className="text-xs font-black uppercase tracking-widest">
+                {persona === 'landlord' ? "Bonus Feature: Discovery" : "The Discovery Map"}
+              </span>
             </div>
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.9]">Find tenants, <br /> <span className="text-emerald-500">not brokers.</span></h2>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.9]">
+              {persona === 'landlord' ? <>{'Find tenants,'} <br /> <span className="text-emerald-500">not brokers.</span></> : <>{'Find a home,'} <br /> <span className="text-emerald-500">not a headache.</span></>}
+            </h2>
             <p className="text-xl text-slate-400 font-medium leading-relaxed">
-              When you need to fill a vacancy, REHWAS puts your room on a live map that tenants are actively browsing. 
-              No listing fees, no broker commissions, and 100% verified leads.
+              {persona === 'landlord' 
+                ? "When you need to fill a vacancy, REHWAS puts your room on a live map that tenants are actively browsing. No listing fees, no broker commissions."
+                : "Browse thousands of verified rooms on a live map. Talk directly to landlords, see locality safety trends, and skip the broker fees entirely."
+              }
             </p>
             <div className="space-y-4">
               <div className="flex items-center gap-4 text-emerald-400 font-black text-sm">
@@ -330,7 +420,7 @@ export default function Home() {
                 <Check size={18} strokeWidth={4} /> LIVE MAP LISTINGS
               </div>
               <div className="flex items-center gap-4 text-emerald-400 font-black text-sm">
-                <Check size={18} strokeWidth={4} /> VERIFIED SEEKERS ONLY
+                <Check size={18} strokeWidth={4} /> {persona === 'landlord' ? "VERIFIED SEEKERS ONLY" : "DIRECT LANDLORD CONTACT"}
               </div>
             </div>
           </div>
@@ -352,7 +442,9 @@ export default function Home() {
               </div>
               <div className="absolute bottom-10 left-10 right-10 bg-slate-900/90 backdrop-blur-md p-6 rounded-2xl border border-slate-700 transform transition-transform group-hover:translate-y-2">
                 <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-2">Live Demand</p>
-                <p className="text-sm font-bold text-white">"14 tenants browsing in Indiranagar right now"</p>
+                <p className="text-sm font-bold text-white">
+                  {persona === 'landlord' ? '"14 tenants browsing in Indiranagar right now"' : '"3 new verified rooms added in your locality today"'}
+                </p>
               </div>
             </div>
           </div>
@@ -366,31 +458,64 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-24 max-w-3xl mx-auto">
             <h2 className="text-4xl md:text-5xl font-black text-dark tracking-tight mb-6">Built for the way India rents</h2>
-            <p className="text-lg text-slate-500 font-medium">Join 2,400+ landlords across Bengaluru, Pune, and Mumbai who reclaimed their weekends with REHWAS.</p>
+            <p className="text-lg text-slate-500 font-medium">
+              {persona === 'landlord' 
+                ? "Join 2,400+ landlords across Bengaluru, Pune, and Mumbai who reclaimed their weekends with REHWAS."
+                : "Join 15,000+ tenants who found safer, broker-free homes and protected their security deposits."
+              }
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Testimonial 
-              name="Ramesh S."
-              location="Bengaluru"
-              roles="8 rooms"
-              initial="RS"
-              text="I used to track rent in a notebook. REHWAS replaced my entire system. I see who hasn't paid in 2 seconds."
-            />
-            <Testimonial 
-              name="Priya M."
-              location="Pune"
-              roles="3 rooms"
-              initial="PM"
-              text="The WhatsApp reminder button saved me 3 awkward conversations this month. Professional and effective."
-            />
-            <Testimonial 
-              name="Sunita A."
-              location="Mumbai"
-              roles="15 PG beds"
-              initial="SA"
-              text="The electricity splitter alone is worth the subscription. Used to take me 30 minutes every month manually."
-            />
+            {persona === 'landlord' ? (
+              <>
+                <Testimonial 
+                  name="Ramesh S."
+                  location="Bengaluru"
+                  roles="8 rooms"
+                  initial="RS"
+                  text="I used to track rent in a notebook. REHWAS replaced my entire system. I see who hasn't paid in 2 seconds."
+                />
+                <Testimonial 
+                  name="Priya M."
+                  location="Pune"
+                  roles="3 rooms"
+                  initial="PM"
+                  text="The WhatsApp reminder button saved me 3 awkward conversations this month. Professional and effective."
+                />
+                <Testimonial 
+                  name="Sunita A."
+                  location="Mumbai"
+                  roles="15 PG beds"
+                  initial="SA"
+                  text="The electricity splitter alone is worth the subscription. Used to take me 30 minutes every month manually."
+                />
+              </>
+            ) : (
+              <>
+                <Testimonial 
+                  name="Kavya R."
+                  location="Bengaluru"
+                  roles="Software Engineer"
+                  initial="KR"
+                  text="The Street Night View videos were a game changer. I could see the street lighting and vibe before visiting."
+                />
+                <Testimonial 
+                  name="Arjun M."
+                  location="Pune"
+                  roles="Student"
+                  initial="AM"
+                  text="No broker fees and the Bhoomi Score gave me confidence that the landlord was legit. Best app for students."
+                />
+                <Testimonial 
+                  name="Sneha K."
+                  location="Mumbai"
+                  roles="Creative Designer"
+                  initial="SK"
+                  text="The Deposit Vault is so needed in India. I finally felt my money was safe until the move-in report was signed."
+                />
+              </>
+            )}
           </div>
 
           {/* Section 5 Highlights: India Specifics */}
@@ -422,18 +547,20 @@ export default function Home() {
       {/* Section 4: Pricing Preview 
           STRATEGY: Transparency. SaaS buyers want to see the price before they sign up.
       */}
-      <section className="py-32 lg:py-48 px-6 bg-slate-50 border-y border-slate-100">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-24">
-            <h2 className="text-4xl md:text-5xl font-black text-dark tracking-tight mb-6">Simple, transparent pricing</h2>
-            <Link to="/pricing" className="text-emerald-600 font-black flex items-center justify-center gap-2 hover:underline">
-              View full pricing details <ArrowRight size={18} />
-            </Link>
-          </div>
+      {persona === 'landlord' && (
+        <section className="py-32 lg:py-48 px-6 bg-slate-50 border-y border-slate-100">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-24">
+              <h2 className="text-4xl md:text-5xl font-black text-dark tracking-tight mb-6">Simple, transparent pricing</h2>
+              <Link to="/pricing" className="text-emerald-600 font-black flex items-center justify-center gap-2 hover:underline">
+                View full pricing details <ArrowRight size={18} />
+              </Link>
+            </div>
 
-          <PricingPreview />
-        </div>
-      </section>
+            <PricingPreview />
+          </div>
+        </section>
+      )}
 
       {/* NEW BOTTOM CTA BANNER 
           STRATEGY: The "Closer". Final push to get the conversion.
@@ -443,18 +570,25 @@ export default function Home() {
           <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-48 -mt-48 transition-transform group-hover:scale-110 duration-1000" />
           
           <div className="relative z-10 max-w-4xl mx-auto space-y-10">
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[1]">Ready to manage your <br className="hidden md:block" /> properties the smart way?</h2>
-            <p className="text-xl text-emerald-50 font-medium">Join 2,400+ landlords already using REHWAS to save 10+ hours of management every month.</p>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-[1]">
+              {persona === 'landlord' ? "Ready to manage your properties the smart way?" : "Ready to find your perfect home?"}
+            </h2>
+            <p className="text-xl text-emerald-50 font-medium">
+              {persona === 'landlord' 
+                ? "Join 2,400+ landlords already using REHWAS to save 10+ hours of management every month."
+                : "Join 15,000+ tenants using REHWAS to rent with trust and transparency."
+              }
+            </p>
             
             <div className="flex flex-col items-center gap-6">
               <button 
-                onClick={() => navigate('/login')}
+                onClick={() => navigate(persona === 'landlord' ? '/login' : '/discover')}
                 className="px-12 py-6 bg-white text-emerald-700 text-xl font-black rounded-2xl shadow-2xl hover:shadow-white/20 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest"
               >
-                Start free today <ArrowRight className="w-6 h-6" />
+                {persona === 'landlord' ? "Start free today" : "Find a Room Now"} <ArrowRight className="w-6 h-6" />
               </button>
               <p className="text-sm font-black text-emerald-200 uppercase tracking-widest">
-                No credit card required · Cancel anytime · Free for up to 3 rooms
+                {persona === 'landlord' ? "No credit card required · Cancel anytime · Free for up to 3 rooms" : "Zero Brokerage · Verified Listings · Aadhaar Secured"}
               </p>
             </div>
           </div>
@@ -510,7 +644,7 @@ export default function Home() {
 
           <div className="pt-10 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="text-xs font-black text-slate-400 tracking-widest flex items-center gap-4">
-               <Star size={14} className="text-amber-400" /> Rated 4.9/5 by Indian Landlords
+               <Star size={14} className="text-amber-400" /> Rated 4.9/5 by Indian Renters
             </div>
             <div className="text-xs font-black text-slate-900 tracking-widest">
                BUILT WITH ❤️ FOR BHARAT 🇮🇳

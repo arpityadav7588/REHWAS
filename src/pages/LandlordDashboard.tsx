@@ -16,13 +16,19 @@ import { FeatureGate } from '@/components/FeatureGate';
 import { BoostModal } from '@/components/BoostModal';
 import { RentAgreementModal } from '@/components/RentAgreementModal';
 import { useRooms as useRoomsHook } from '@/hooks/useRooms';
-import { Users, Home, Phone, FileText, Camera, ShieldAlert, Share2, Rocket, Edit, Trash2, Plus, Key, DoorOpen, BookOpen, Bell, TrendingUp, Sparkles, ExternalLink, ShieldCheck, Lock, IndianRupee, Zap, Wrench, Droplets, Calculator, History, ChevronDown, ChevronUp, Receipt, Check, X, Info, Scale } from 'lucide-react';
+import { Users, Home, Phone, FileText, Camera, ShieldAlert, Share2, Rocket, Edit, Trash2, Trash, Plus, PlusCircle, Key, DoorOpen, BookOpen, Bell, TrendingUp, Sparkles, ExternalLink, ShieldCheck, Lock, IndianRupee, Zap, Wrench, Droplets, Calculator, History, ChevronDown, ChevronUp, Receipt, Check, X, Info, Scale, Send, BarChart3, Download } from 'lucide-react';
 import { VacancyBleedCard } from '@/components/VacancyBleedCard';
 import { calculateVacancyBleed } from '@/lib/vacancyBleed';
 import { getFinancialYear, getFYBounds, calculateScheduleHP, type ScheduleHPProperty } from '@/lib/itrExport';
 import { generateITRExcel } from '@/lib/generateITRExcel';
 import { AlertCircle, FileSpreadsheet } from 'lucide-react';
 import { useDepositVault } from '@/hooks/useDepositVault';
+import { VerificationCenter } from '@/components/VerificationCenter';
+import { OnboardingChecklist } from '@/components/OnboardingChecklist';
+import { EmptyState } from '@/components/EmptyState';
+import { TenantRentScore } from '@/components/TenantRentScore';
+import { DigitalDossier } from '@/components/DigitalDossier';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 
 /**
@@ -55,6 +61,9 @@ export default function LandlordDashboard() {
   const { fetchLedger, getMonthlyTotal, createLedgerEntries, updateLedgerEntry, applyBulkUtilityBill } = useLedger();
   const { hasPlan } = useSubscription();
   const { releaseDeposit, loading: depositLoading } = useDepositVault();
+
+  // Responsive
+  const isMobile = useIsMobile();
 
   // Selected Tab State
   const [activeTab, setActiveTab] = useState<'rooms' | 'tenants' | 'ledger' | 'reminders' | 'pl'>('rooms');
@@ -202,9 +211,14 @@ export default function LandlordDashboard() {
 
       // 3. Fetch Ledger
       const { data: ledgerData } = await fetchLedger(profile.id);
-      if (ledgerData) setLedgerEntries(ledgerData);
-
-      setRentCollected(total);
+      if (ledgerData) {
+        setLedgerEntries(ledgerData);
+        // 4. Calculate total rent collected from paid entries
+        const total = ledgerData
+          .filter((e: any) => e.status === 'paid')
+          .reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
+        setRentCollected(total);
+      }
       
       // 5. Fetch Deposit Escrows
       const { data: escrowData } = await supabase
@@ -519,7 +533,7 @@ export default function LandlordDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafafa] pb-24 pt-4 md:pt-8 px-4 md:px-8 max-w-7xl mx-auto">
+    <div className={`min-h-screen bg-[#fafafa] pt-4 md:pt-8 px-4 md:px-8 max-w-7xl mx-auto ${isMobile ? 'pb-24' : 'pb-10'}`}>
       <VerificationCenter />
       <OnboardingChecklist />
       
@@ -568,24 +582,59 @@ export default function LandlordDashboard() {
          ))}
       </div>
 
-      {/* TABS NAVIGATION */}
-      <div className="flex overflow-x-auto scrollbar-none gap-2 mb-8 bg-gray-100/80 p-2 rounded-2xl w-max border border-gray-200/60 max-w-full">
-         {[
-           { id: 'rooms', label: 'My Rooms', icon: Home },
-           { id: 'tenants', label: 'Tenants', icon: Users },
-           { id: 'ledger', label: 'Rent Ledger', icon: BookOpen },
-           { id: 'reminders', label: 'Reminders', icon: Bell },
-           { id: 'pl', label: 'P&L 📊', icon: TrendingUp },
-         ].map((tab) => (
-           <button 
-             key={tab.id}
-             onClick={() => setActiveTab(tab.id as any)}
-             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-green-700 shadow-sm border border-gray-200/60' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`}
-           >
-             <tab.icon size={16} /> {tab.label}
-           </button>
-         ))}
-      </div>
+      {/* ── TABS: desktop horizontal scrollable bar ─────────────────────── */}
+      {!isMobile && (
+        <div className="flex overflow-x-auto scrollbar-none gap-2 mb-8 bg-gray-100/80 p-2 rounded-2xl border border-gray-200/60">
+          {[
+            { id: 'rooms',     label: 'My Rooms',    icon: Home      },
+            { id: 'tenants',   label: 'Tenants',     icon: Users     },
+            { id: 'ledger',    label: 'Rent Ledger', icon: BookOpen  },
+            { id: 'reminders', label: 'Reminders',   icon: Bell      },
+            { id: 'pl',        label: 'P&L 📊',      icon: TrendingUp },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-white text-green-700 shadow-sm border border-gray-200/60'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+              }`}
+            >
+              <tab.icon size={16} /> {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── TABS: mobile sticky bottom nav bar ──────────────────────────── */}
+      {isMobile && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex items-stretch shadow-[0_-4px_20px_rgba(0,0,0,0.06)] safe-area-pb">
+          {[
+            { id: 'rooms',     label: 'Rooms',   icon: Home      },
+            { id: 'tenants',   label: 'Tenants', icon: Users     },
+            { id: 'ledger',    label: 'Ledger',  icon: BookOpen  },
+            { id: 'reminders', label: 'Remind',  icon: Bell      },
+            { id: 'pl',        label: 'P&L',     icon: TrendingUp },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
+                activeTab === tab.id ? 'text-green-600' : 'text-gray-400'
+              }`}
+            >
+              <tab.icon size={20} strokeWidth={activeTab === tab.id ? 2.5 : 1.8} />
+              <span className={`text-[10px] font-bold leading-none ${
+                activeTab === tab.id ? 'text-green-600' : 'text-gray-400'
+              }`}>{tab.label}</span>
+              {activeTab === tab.id && (
+                <span className="absolute bottom-0 w-8 h-0.5 bg-green-500 rounded-full" />
+              )}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {/* TAB CONTENT AREAS */}
 
@@ -1384,32 +1433,50 @@ export default function LandlordDashboard() {
                     <p className="text-[10px] font-bold text-blue-600 mt-1 animate-pulse uppercase tracking-[0.2em]">Checking REHWAS ecosystem...</p>
                   )}
                   {foundTenantProfileId ? (
-                    <div className="mt-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 animate-in slide-in-from-top-2 duration-300">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
-                          <ShieldCheck size={18} />
+                    <div className="mt-3 p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100 animate-in slide-in-from-top-2 duration-300">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                          <ShieldCheck size={20} />
                         </div>
-                        <div className="text-xs font-black text-slate-900 tracking-tight">
-                          Found: <span className="italic">{tenantName}</span>
-                          {tenantCVData && <span className="ml-1 text-indigo-600">— Grade: {tenantCVData.rent_health_grade}</span>}
+                        <div>
+                          <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none mb-1">REHWAS Verified Tenant</div>
+                          <div className="text-sm font-black text-slate-900 tracking-tight">Found: {tenantName}</div>
                         </div>
                       </div>
 
                       {tenantCVData ? (
-                        <div className="flex flex-col gap-3">
-                          <TenantRentScore tenantId={foundTenantProfileId} compact />
+                        <div className="flex flex-col gap-4">
+                          <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm">
+                             <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rental CV Found</span>
+                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black border ${
+                                   tenantCVData.rent_health_grade === 'A' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                   tenantCVData.rent_health_grade === 'B' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                   'bg-rose-50 text-rose-600 border-rose-100'
+                                }`}>
+                                   GRADE {tenantCVData.rent_health_grade}
+                                </span>
+                             </div>
+                             <div className="text-xs font-bold text-slate-700">
+                                <span className="text-indigo-600">{tenantCVData.on_time_payment_pct}%</span> on-time payment history across <span className="text-indigo-600">{tenantCVData.total_months_tracked} months</span>.
+                             </div>
+                          </div>
+                          
                           <button 
                             type="button"
                             onClick={() => window.open(`/tenant-cv/${foundTenantProfileId}`, '_blank')}
-                            className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1.5 hover:gap-3 transition-all"
+                            className="w-full py-3 bg-white border-2 border-indigo-100 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-50 transition-all"
                           >
-                            View full Rental CV <ExternalLink size={12} />
+                            View Full Rental CV <ExternalLink size={12} />
                           </button>
                         </div>
                       ) : (
-                        <p className="text-[10px] font-bold text-slate-500 italic">
-                          {tenantName} is on REHWAS but has no payment history yet.
-                        </p>
+                        <div className="p-4 bg-white/50 rounded-xl border border-dashed border-indigo-200">
+                          <p className="text-[10px] font-bold text-slate-500 italic text-center">
+                             {tenantName} has a REHWAS account but no payment history tracked yet. 
+                             Add them to start building their CV.
+                          </p>
+                        </div>
                       )}
                     </div>
                   ) : tenantPhone.length === 10 && !checkingTenant ? (

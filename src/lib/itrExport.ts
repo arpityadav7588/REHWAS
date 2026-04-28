@@ -9,7 +9,7 @@
  * your CA files with the government.
  */
 
-export interface ScheduleHPProperty {
+export type ScheduleHPProperty = {
   propertyAddress: string;
   locality: string;
   city: string;

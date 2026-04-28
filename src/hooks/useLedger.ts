@@ -53,14 +53,21 @@ export const useLedger = () => {
 
     if (!error && data) {
       const ledger = data as any;
+      const tenantProfileId = ledger.tenants.tenant_profile_id;
+
       // Create notification for the tenant
       await supabase.from('notifications').insert([{
-        user_id: ledger.tenants.tenant_profile_id,
+        user_id: tenantProfileId,
         type: 'rent_paid',
         title: `Rent confirmed for ${ledger.month}`,
         body: `Your rent of ₹${amount.toLocaleString()} has been confirmed by your landlord.`,
         link: `/profile` // Tenants can see their receipts in profile usually
       }]);
+
+      // Trigger Tenant CV recalculation (Async, don't block UI)
+      supabase.functions.invoke('compute-tenant-cv', {
+        body: { profileId: tenantProfileId }
+      }).catch(err => console.error('Failed to trigger CV computation:', err));
     }
       
     setLoading(false);

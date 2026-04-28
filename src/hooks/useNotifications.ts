@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 
@@ -15,18 +15,20 @@ export interface LandlordNotification {
 
 /**
  * useNotifications Hook
- * 
+ *
  * WHAT IT DOES: Fetches and manages the landlord's notification list.
  * ANALOGY: Like checking your email inbox, but for REHWAS alerts.
- * 
+ *
  * SUPABASE REALTIME:
- * ANALOGY: Like push notifications on your phone — instead of refreshing every 
+ * ANALOGY: Like push notifications on your phone — instead of refreshing every
  * minute to check for new messages, the server pushes them to you the instant they arrive.
  */
 export function useNotifications() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<LandlordNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  // Stable ref so the useEffect doesn't re-run when fetchNotifications re-creates
+  const fetchRef = useRef<(() => Promise<void>) | null>(null);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -36,18 +38,35 @@ export function useNotifications() {
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    
-    const { data, error } = await supabase
-      .from('landlord_notifications')
-      .select('*')
-      .eq('landlord_id', user.id)
-      .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      setNotifications(data);
+    try {
+      const { data, error } = await supabase
+        .from('landlord_notifications')
+        .select('*')
+        .eq('landlord_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        if (error.code === '42P01') {
+          console.warn('landlord_notifications table not found. Please run the migrations.');
+        } else {
+          console.error('Error fetching notifications:', error);
+        }
+        return;
+      }
+
+      if (data) {
+        setNotifications(data);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching notifications:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [user]);
+
+  // Keep fetchRef in sync without adding it as an effect dependency
+  fetchRef.current = fetchNotifications;
 
   /**
    * Marks a specific notification as read.
@@ -59,7 +78,7 @@ export function useNotifications() {
       .eq('id', id);
 
     if (!error) {
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(n => n.id === id ? { ...n, is_read: true } : n)
       );
     }
@@ -70,7 +89,7 @@ export function useNotifications() {
    */
   const markAllRead = async () => {
     if (!user) return;
-    
+
     const { error } = await supabase
       .from('landlord_notifications')
       .update({ is_read: true })
@@ -83,16 +102,26 @@ export function useNotifications() {
   };
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
 
-    fetchNotifications();
+    // Call fetch via ref so this effect only re-runs when user.id changes,
+    // not every time fetchNotifications is recreated by useCallback.
+    fetchRef.current?.();
 
     /**
-     * Subscribe to Realtime changes on landlord_notifications table.
-     * This ensures the UI stays in sync with the database without manual polling.
+     * Use a unique channel name per user to prevent Supabase from
+     * reusing a stale "joining" channel instance across re-renders.
+     * All .on() listeners must be chained BEFORE .subscribe().
      */
+    const channelName = `landlord-notifications-${user.id}`;
+
+    // Guard: remove any stale channel Supabase may still hold (e.g. after HMR
+    // hot-reload or React Strict Mode double-invocation) before re-subscribing.
+    const stale = supabase.getChannels().find(c => c.topic === `realtime:${channelName}`);
+    if (stale) supabase.removeChannel(stale);
+
     const channel = supabase
-      .channel('landlord-notifications')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -102,7 +131,9 @@ export function useNotifications() {
           filter: `landlord_id=eq.${user.id}`,
         },
         (payload) => {
-          setNotifications(prev => [payload.new as LandlordNotification, ...prev]);
+          if (payload.new) {
+            setNotifications(prev => [payload.new as LandlordNotification, ...prev]);
+          }
         }
       )
       .on(
@@ -114,18 +145,24 @@ export function useNotifications() {
           filter: `landlord_id=eq.${user.id}`,
         },
         (payload) => {
-          const updated = payload.new as LandlordNotification;
-          setNotifications(prev => 
-            prev.map(n => n.id === updated.id ? updated : n)
-          );
+          if (payload.new) {
+            const updated = payload.new as LandlordNotification;
+            setNotifications(prev =>
+              prev.map(n => n.id === updated.id ? updated : n)
+            );
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('Realtime subscription error for notifications. Table might be missing.');
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, fetchNotifications]);
+  }, [user?.id]); // Only re-run when the user ID changes, not on every render
 
   return {
     notifications,
@@ -133,6 +170,6 @@ export function useNotifications() {
     loading,
     markAsRead,
     markAllRead,
-    fetchNotifications
+    fetchNotifications,
   };
 }

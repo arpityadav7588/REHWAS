@@ -123,9 +123,41 @@ export function useDepositVault() {
     }
   };
 
+  /**
+   * disputeDeposit
+   * WHAT IT DOES: Pauses the escrow release and marks the deposit as "disputed".
+   * 
+   * DISPUTE ANALOGY: Like pulling the emergency brake on a train—it stops all 
+   * automated processes until a human (customer support) reviews the case.
+   */
+  const disputeDeposit = async (escrowId: string, reason: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('deposit_escrow')
+        .update({ 
+          status: 'disputed',
+          dispute_reason: reason,
+          disputed_at: new Date().toISOString()
+        })
+        .eq('id', escrowId);
+
+      if (error) throw error;
+
+      toast.success("Dispute raised. REHWAS Trust Team notified. 🛡️");
+    } catch (err: any) {
+      console.error('Dispute error:', err);
+      toast.error(err.message || 'Failed to raise dispute');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     initiateDeposit,
     releaseDeposit,
+    disputeDeposit,
     loading
   };
 }

@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
-import { Profile, RentLedger, Expense } from '@/types';
-import { ScheduleHPProperty, getAYLabel } from './itrExport';
+import { type Profile, type RentLedger, type Expense } from '@/types';
+import { type ScheduleHPProperty, getAYLabel } from './itrExport';
 
 /**
  * REHWAS EXCEL GENERATOR

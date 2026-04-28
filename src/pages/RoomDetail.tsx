@@ -6,7 +6,7 @@ import type { Room } from '@/types';
 import toast from 'react-hot-toast';
 import { RoomCard } from '@/components/RoomCard';
 import { 
-  X, Loader2, FileText, MapPin, Zap, Moon, ShieldCheck, Lock, Info, Check, MessageSquare
+  X, Loader2, FileText, MapPin, Zap, Moon, ShieldCheck, Lock, Info, Check, MessageSquare, ArrowRight
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
@@ -312,18 +312,26 @@ export default function RoomDetail() {
             )}
           </div>
 
-          {/* GALLERY TABS */}
-          <div className="flex gap-4 px-4 mt-6">
+          {/* GALLERY TABS - Premium Glassmorphism */}
+          <div className="flex gap-3 px-4 mt-8">
             <button 
               onClick={() => setGalleryMode('photos')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${galleryMode === 'photos' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-gray-400 hover:bg-gray-50'}`}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
+                galleryMode === 'photos' 
+                  ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-600/30 -translate-y-1' 
+                  : 'bg-white/80 backdrop-blur-md text-slate-400 hover:text-slate-600 border border-slate-100 hover:border-emerald-100'
+              }`}
             >
               <span className="material-symbols-outlined text-[18px]">photo_library</span>
-              Photos ({room.photos?.length || 0})
+              Day Photos
             </button>
             <button 
               onClick={() => setGalleryMode('night_view')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${galleryMode === 'night_view' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-white text-gray-400 hover:bg-gray-50'}`}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
+                galleryMode === 'night_view' 
+                  ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/30 -translate-y-1' 
+                  : 'bg-white/80 backdrop-blur-md text-slate-400 hover:text-slate-600 border border-slate-100 hover:border-slate-300'
+              }`}
             >
               <Moon size={16} className={galleryMode === 'night_view' ? 'fill-emerald-400 text-emerald-400' : ''} />
               Night View
@@ -331,29 +339,31 @@ export default function RoomDetail() {
           </div>
 
           {/* Overlapping Thumbnails (only for photos mode) */}
-          {galleryMode === 'photos' ? (
-            <div className="flex gap-3 px-4 -mt-12 relative z-10 overflow-x-auto hide-scrollbar snap-x">
-              {room.photos?.map((url: string, idx: number) => (
-                <button
-                  key={idx}
-                  onClick={() => setActivePhotoIdx(idx)}
-                  className={`min-w-[100px] h-20 rounded-xl overflow-hidden ring-4 transition-all snap-start ${
-                    idx === activePhotoIdx ? 'ring-primary shadow-xl scale-95' : 'ring-white shadow-lg opacity-80'
-                  }`}
-                >
-                  <img src={url} className="w-full h-full object-cover" alt={`Thumb ${idx}`} />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="px-4 -mt-12 relative z-10">
-              <NightViewPlayer 
-                roomId={room.id} 
-                onUploadClick={() => setIsNightUploaderOpen(true)}
-                isLoggedIn={!!profile}
-              />
-            </div>
-          )}
+          <div className="relative z-10 px-4 -mt-10">
+            {galleryMode === 'photos' ? (
+              <div className="flex gap-4 overflow-x-auto hide-scrollbar snap-x pb-4">
+                {room.photos?.map((url: string, idx: number) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActivePhotoIdx(idx)}
+                    className={`min-w-[120px] h-24 rounded-[1.5rem] overflow-hidden ring-4 transition-all snap-start shrink-0 ${
+                      idx === activePhotoIdx ? 'ring-emerald-500 shadow-2xl scale-105' : 'ring-white/50 backdrop-blur-sm shadow-lg opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={url} className="w-full h-full object-cover" alt={`Thumb ${idx}`} />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="animate-in fade-in zoom-in-95 duration-500">
+                <NightViewPlayer 
+                  roomId={room.id} 
+                  onUploadClick={() => setIsNightUploaderOpen(true)}
+                  isLoggedIn={!!profile}
+                />
+              </div>
+            )}
+          </div>
         </section>
 
         <NightViewUploader 
@@ -389,72 +399,83 @@ export default function RoomDetail() {
 
         <div className="max-w-4xl mx-auto px-4 lg:px-0">
           {/* 3. ROOM HEADER */}
-          <section className="mt-8 flex flex-col gap-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex-1">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-2">{room.title}</h1>
+          <section className="mt-12 flex flex-col gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-10">
+              <div className="flex-1 space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border border-emerald-100 shadow-sm">
+                  <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">
                     <Zap size={14} className="fill-emerald-500" /> Verified Host
                   </div>
                   {moveInReport && (
-                    <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border border-indigo-100 shadow-sm">
-                      <FileText size={14} className="text-indigo-500" /> Move-in Report Filed • {format(parseISO(moveInReport.created_at), 'MMM yyyy')}
+                    <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100 shadow-sm">
+                      <FileText size={14} className="text-indigo-500" /> Move-in Report Active
                     </div>
                   )}
-                  <p className="text-gray-400 font-bold text-xs uppercase tracking-widest flex items-center gap-1 ml-1"><MapPin size={14}/> {room.locality}, {room.city}</p>
+                  <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-1 ml-1">
+                    <MapPin size={14} className="text-slate-300"/> {room.locality}, {room.city}
+                  </p>
+                </div>
+                
+                <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-[1.1]">
+                  {room.title}
+                </h1>
+                
+                <div className="flex items-baseline gap-2">
+                  <span className="text-5xl font-black text-emerald-600 tracking-tighter">
+                    ₹{room.rent_amount?.toLocaleString()}
+                  </span>
+                  <span className="text-slate-400 font-bold text-lg">/ month</span>
                 </div>
               </div>
+
               {/* BHOOMI SCORE 2.0 (Dynamic Trust Algorithm) */}
               {room && (
-                <div className="w-full lg:w-auto">
-                  <BhoomiScoreCard 
-                    isOwner={profile?.id === room.landlord_id}
-                    input={{
-                      landlord_kyc_verified: room.profiles?.kyc_verified || false,
-                      landlord_phone_verified: !!room.profiles?.phone,
-                      photos_count: room.photos?.length || 0,
-                      amenities_count: room.amenities?.length || 0,
-                      has_description: !!(room.description && room.description.length > 50),
-                      has_exact_coordinates: !!(room.latitude && room.longitude),
-                      has_night_video: videoCount > 0,
-                      tenant_reviews_count: reviews.length,
-                      avg_review_rating: reviews.length > 0 
-                        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
-                        : 0,
-                      move_in_reports_completed: moveInCount
-                    }}
-                  />
+                <div className="w-full lg:w-auto animate-in fade-in slide-in-from-right-10 duration-700">
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-emerald-500/10 rounded-[2.5rem] blur-2xl group-hover:bg-emerald-500/20 transition-all duration-500" />
+                    <div className="relative">
+                      <BhoomiScoreCard 
+                        isOwner={profile?.id === room.landlord_id}
+                        input={{
+                          landlord_kyc_verified: room.profiles?.kyc_verified || false,
+                          landlord_phone_verified: !!room.profiles?.phone,
+                          photos_count: room.photos?.length || 0,
+                          amenities_count: room.amenities?.length || 0,
+                          has_description: !!(room.description && room.description.length > 50),
+                          has_exact_coordinates: !!(room.latitude && room.longitude),
+                          has_night_video: videoCount > 0,
+                          tenant_reviews_count: reviews.length,
+                          avg_review_rating: reviews.length > 0 
+                            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+                            : 0,
+                          move_in_reports_completed: moveInCount
+                        }}
+                      />
+                    </div>
+                  </div>
                   {profile && (
                     <button 
                       onClick={() => setIsReviewModalOpen(true)}
-                      className="mt-4 text-xs font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-600 transition-colors flex items-center gap-1.5 ml-8"
+                      className="mt-6 text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:text-emerald-700 transition-colors flex items-center gap-2 px-2"
                     >
-                      <MessageSquare size={14} /> Lived here? Add a review →
+                      <MessageSquare size={14} /> Lived here? Add a review &rarr;
                     </button>
                   )}
                 </div>
               )}
             </div>
 
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="font-headline font-extrabold text-4xl text-primary">
-                ₹{room.rent_amount?.toLocaleString()}
-              </span>
-              <span className="text-on-surface-variant font-medium text-lg">/ month</span>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider">
+            <div className="flex flex-wrap gap-3 mt-4">
+              <span className="bg-slate-50 text-slate-600 px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest border border-slate-100 shadow-sm">
                 {room.room_type}
               </span>
-              <span className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1 border border-emerald-100">
-                {room.furnished ? 'Furnished' : 'Unfurnished'}
-                <span className="material-symbols-outlined text-[14px]">check</span>
+              <span className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest border border-emerald-100 shadow-sm flex items-center gap-2">
+                {room.furnished ? 'Fully Furnished' : 'Unfurnished'}
+                <Check size={14} strokeWidth={4} />
               </span>
-              <span className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1 border border-emerald-100">
+              <span className="bg-white text-emerald-600 px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest border border-emerald-100 shadow-sm flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                {room.available ? 'Available Now' : 'Unavailable'}
+                Instant Move-in
               </span>
             </div>
           </section>
@@ -603,43 +624,49 @@ export default function RoomDetail() {
               </section>
 
               {/* DEPOSIT VAULT SECTION (Desktop Sidebar) */}
-              <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 p-8 overflow-hidden relative group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-[5rem] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+              <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/40 p-8 overflow-hidden relative group animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-200">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-bl-[5rem] -mr-10 -mt-10 transition-transform group-hover:scale-110 duration-700"></div>
                 <div className="relative z-10">
-                  <div className="flex items-center gap-2 text-indigo-600 mb-4">
-                    <Lock size={20} />
+                  <div className="flex items-center gap-2 text-indigo-600 mb-6">
+                    <Lock size={18} strokeWidth={3} />
                     <span className="text-[10px] font-black uppercase tracking-[0.2em]">Secure Deposit Vault</span>
                   </div>
                   
-                  <div className="mb-6">
-                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Total Security Deposit</p>
+                  <div className="mb-8">
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Total Security Deposit</p>
                     <div className="flex items-end gap-2">
-                      <h3 className="text-4xl font-black text-indigo-600 tracking-tighter">₹{(room.rent_amount * 3).toLocaleString()}</h3>
-                      <span className="text-slate-400 text-sm font-bold mb-1.5">(3 mo)</span>
+                      <h3 className="text-5xl font-black text-slate-900 tracking-tighter">₹{(room.rent_amount * 3).toLocaleString()}</h3>
+                      <span className="text-slate-400 text-sm font-bold mb-2">(3 mo)</span>
                     </div>
                   </div>
 
                   <button 
                     onClick={() => setIsDepositModalOpen(true)}
-                    className="w-full bg-white border-2 border-indigo-600 text-indigo-600 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 hover:text-white shadow-lg shadow-indigo-100 active:scale-95 transition-all mb-6 flex items-center justify-center gap-2"
+                    className="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-2xl shadow-indigo-600/20 active:scale-95 transition-all mb-8 flex items-center justify-center gap-2"
                   >
                     <Lock size={16} /> Pay Deposit Securely
                   </button>
 
-                  <div className="flex justify-between items-center px-1">
-                    <div className="flex flex-col items-center gap-1">
-                      <ShieldCheck size={14} className="text-emerald-500" />
-                      <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Protected</span>
+                  <div className="flex justify-between items-center px-2">
+                    <div className="flex flex-col items-center gap-2 group/icon">
+                      <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 group-hover/icon:scale-110 transition-transform">
+                        <ShieldCheck size={16} />
+                      </div>
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Protected</span>
                     </div>
-                    <div className="w-px h-6 bg-slate-100"></div>
-                    <div className="flex flex-col items-center gap-1">
-                      <Check size={14} className="text-blue-500" />
-                      <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Escrowed</span>
+                    <div className="w-px h-8 bg-slate-100"></div>
+                    <div className="flex flex-col items-center gap-2 group/icon">
+                      <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 group-hover/icon:scale-110 transition-transform">
+                        <Check size={16} />
+                      </div>
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Escrowed</span>
                     </div>
-                    <div className="w-px h-6 bg-slate-100"></div>
-                    <div className="flex flex-col items-center gap-1">
-                      <Info size={14} className="text-indigo-400" />
-                      <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">Refundable</span>
+                    <div className="w-px h-8 bg-slate-100"></div>
+                    <div className="flex flex-col items-center gap-2 group/icon">
+                      <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover/icon:scale-110 transition-transform">
+                        <Info size={16} />
+                      </div>
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Refundable</span>
                     </div>
                   </div>
                 </div>
@@ -692,73 +719,86 @@ export default function RoomDetail() {
         </div>
       </footer>
 
-      {/* BOOK A VISIT MODAL PORTAL */}
+      {/* BOOK A VISIT MODAL PORTAL - Concierge Style */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4">
-          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsModalOpen(false)}></div>
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-500" onClick={() => setIsModalOpen(false)}></div>
           
-          <div className="bg-white w-full h-[90vh] md:h-auto md:max-w-lg rounded-t-[32px] md:rounded-[32px] overflow-hidden shadow-2xl relative z-10 animate-in slide-in-from-bottom md:zoom-in-95 duration-200 flex flex-col">
-            <div className="p-6 md:p-8 flex flex-col gap-6 overflow-y-auto flex-1">
+          <div className="bg-white w-full h-[92vh] md:h-auto md:max-w-xl rounded-t-[3rem] md:rounded-[3rem] overflow-hidden shadow-2xl relative z-10 animate-in slide-in-from-bottom md:zoom-in-95 duration-500 flex flex-col">
+            <div className="p-8 md:p-12 flex flex-col gap-10 overflow-y-auto flex-1">
               
-              <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-black text-gray-900">Request a Visit</h3>
-                <button onClick={() => setIsModalOpen(false)} className="bg-gray-100 hover:bg-gray-200 p-2 rounded-full text-gray-500 transition-colors">
-                  <X size={20} />
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Schedule a Visit</h3>
+                  <p className="text-slate-500 font-medium text-sm">Experience the property in person</p>
+                </div>
+                <button onClick={() => setIsModalOpen(false)} className="bg-slate-100 hover:bg-slate-200 p-3 rounded-full text-slate-500 transition-all active:scale-90">
+                  <X size={24} />
                 </button>
               </div>
 
-              <form onSubmit={handleBookVisit} className="flex flex-col gap-5">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Select Date</label>
-                  <input 
-                    type="date" 
-                    required
-                    min={today}
-                    value={visitDate}
-                    onChange={(e) => setVisitDate(e.target.value)}
-                    className="w-full px-4 py-3 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-gray-800 text-base"
-                  />
-                  <p className="text-xs text-gray-400 mt-2 font-medium">Please note visits cannot be scheduled on Sundays.</p>
+              <form onSubmit={handleBookVisit} className="flex flex-col gap-8">
+                <div className="space-y-4">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Select Date</label>
+                  <div className="relative">
+                    <input 
+                      type="date" 
+                      required
+                      min={today}
+                      value={visitDate}
+                      onChange={(e) => setVisitDate(e.target.value)}
+                      className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-emerald-500/20 focus:bg-white outline-none transition-all font-black text-slate-900 text-lg shadow-sm"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 px-1 font-bold uppercase tracking-tight">No visits on Sundays • Landlord responds in 2 hours</p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Preferred Time Window</label>
+                <div className="space-y-4">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Preferred Time Window</label>
                   <div className="grid grid-cols-3 gap-3">
                     {['Morning (9-12)', 'Afternoon (12-4)', 'Evening (4-7)'].map(slot => (
                       <button
                         key={slot}
                         type="button"
                         onClick={() => setVisitTime(slot)}
-                        className={`py-3 px-2 min-h-[44px] rounded-xl text-center text-xs font-bold border-2 transition-all ${visitTime === slot ? 'bg-emerald-50 border-primary text-primary shadow-sm' : 'border-gray-100 bg-white text-gray-500 hover:bg-gray-50'}`}
+                        className={`py-4 px-2 rounded-2xl text-center transition-all border-2 flex flex-col items-center gap-1 ${
+                          visitTime === slot 
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-xl shadow-emerald-600/10 scale-105 z-10' 
+                            : 'border-slate-50 bg-slate-50 text-slate-400 hover:border-slate-200'
+                        }`}
                       >
-                        {slot.split(' (')[0]}<br/>
-                        <span className="font-medium text-[10px] opacity-80">({slot.split('(')[1]}</span>
+                        <span className="font-black text-xs uppercase tracking-widest">{slot.split(' (')[0]}</span>
+                        <span className="font-bold text-[9px] opacity-60 tracking-tighter">{slot.split('(')[1].replace(')', '')}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Message <span className="font-normal text-gray-400">(Optional)</span></label>
+                <div className="space-y-4">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Message for Landlord</label>
                   <textarea 
                     rows={3}
-                    placeholder="Hello! I'm interested in renting this place..."
+                    placeholder="Tell the landlord a bit about yourself..."
                     value={visitMessage}
                     onChange={(e) => setVisitMessage(e.target.value)}
-                    className="w-full px-4 py-3 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium text-gray-800 resize-none text-base"
+                    className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl focus:border-emerald-500/20 focus:bg-white outline-none transition-all font-bold text-slate-700 resize-none text-base shadow-sm"
                   ></textarea>
                 </div>
 
-                <div className="mt-auto md:mt-2 text-center pt-2 border-t border-gray-100">
+                <div className="mt-4">
                   <button 
                     type="submit" 
                     disabled={sendingRequest}
-                    className={`w-full font-bold py-4 min-h-[44px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 ${sendingRequest ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-primary hover:bg-emerald-700 text-white shadow-primary/20 active:scale-[0.98]'}`}
+                    className={`w-full py-6 rounded-2xl font-black text-sm uppercase tracking-widest shadow-2xl transition-all flex items-center justify-center gap-3 ${
+                      sendingRequest 
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                        : 'bg-emerald-600 text-white shadow-emerald-600/30 hover:bg-emerald-700 active:scale-[0.98]'
+                    }`}
                   >
                     {sendingRequest ? (
-                      <><Loader2 className="animate-spin h-5 w-5" /> Sending...</>
+                      <><Loader2 className="animate-spin h-5 w-5" /> Requesting...</>
                     ) : (
-                      'Send Request'
+                      <>Request Visit Schedule <ArrowRight size={18} /></>
                     )}
                   </button>
                 </div>

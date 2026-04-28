@@ -39,9 +39,21 @@ const createPriceIcon = (rentAmount: number, commuteTime?: number) => {
 function MapResizer() {
   const map = useMap();
   useEffect(() => {
-    // Invalidate size on mount and after a short delay to handle transitions
+    const container = map.getContainer();
+    if (!container) return;
+
+    // Use ResizeObserver to detect when the map container actually gets a size
+    // (e.g. when switching from 'list' view to 'map' view on mobile)
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+
+    observer.observe(container);
+    
+    // Initial call
     map.invalidateSize();
-    setTimeout(() => map.invalidateSize(), 300);
+
+    return () => observer.disconnect();
   }, [map]);
   return null;
 }
@@ -51,25 +63,56 @@ function MapResizer() {
  */
 function MapAutoCenter({ rooms }: { rooms: Room[] }) {
   const map = useMap();
+  const [isVisible, setIsVisible] = useState(false);
+
   useEffect(() => {
+    const container = map.getContainer();
+    if (!container) return;
+
+    const observer = new ResizeObserver(() => {
+      const hasSize = container.clientHeight > 0 && container.clientWidth > 0;
+      setIsVisible(hasSize);
+    });
+
+    observer.observe(container);
+    // Set initial state
+    setIsVisible(container.clientHeight > 0 && container.clientWidth > 0);
+
+    return () => observer.disconnect();
+  }, [map]);
+
+  useEffect(() => {
+    // Only animate if the map is visible and rooms exist
+    if (!isVisible) return;
+
     const validRooms = rooms.filter(r => 
+      r &&
       typeof r.latitude === 'number' && 
       typeof r.longitude === 'number' && 
       !isNaN(r.latitude) && 
-      !isNaN(r.longitude)
+      !isNaN(r.longitude) &&
+      r.latitude !== 0 && r.longitude !== 0
     );
 
     if (validRooms.length > 0) {
-      if (validRooms.length === 1) {
-        map.flyTo([validRooms[0].latitude, validRooms[0].longitude], 14, { duration: 1.5 });
-      } else {
-        const bounds = L.latLngBounds(validRooms.map(r => [r.latitude, r.longitude]));
-        if (bounds.isValid()) {
-          map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
+      try {
+        if (validRooms.length === 1) {
+          const lat = validRooms[0].latitude;
+          const lng = validRooms[0].longitude;
+          if (!isNaN(lat) && !isNaN(lng)) {
+            map.flyTo([lat, lng], 14, { duration: 1.5 });
+          }
+        } else {
+          const bounds = L.latLngBounds(validRooms.map(r => [r.latitude, r.longitude]));
+          if (bounds && bounds.isValid()) {
+            map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
+          }
         }
+      } catch (err) {
+        console.warn('Map animation failed:', err);
       }
     }
-  }, [rooms, map]);
+  }, [rooms, map, isVisible]);
   return null;
 }
 
@@ -112,6 +155,8 @@ function HeatmapLayer({ rooms, active }: { rooms: Room[], active: boolean }) {
       const avgLat = data.lat.reduce((a, b) => a + b, 0) / data.lat.length;
       const avgLng = data.lng.reduce((a, b) => a + b, 0) / data.lng.length;
       const avgRent = data.rent.reduce((a, b) => a + b, 0) / data.rent.length;
+
+      if (isNaN(avgLat) || isNaN(avgLng)) return;
 
       let color = '#22C55E'; // Green
       let tier = 'Budget zone';
@@ -157,7 +202,13 @@ function HeatmapLayer({ rooms, active }: { rooms: Room[], active: boolean }) {
 export const MapView: React.FC<MapViewProps> = ({ rooms, heatmapActive = false }) => {
   const [commuteMode, setCommuteMode] = useState(false);
   const defaultCenter: [number, number] = [12.9716, 77.5946]; // Bengaluru
-  const validRooms = rooms.filter(r => r.latitude && r.longitude);
+  const validRooms = rooms.filter(r => 
+    r &&
+    typeof r.latitude === 'number' && 
+    typeof r.longitude === 'number' && 
+    !isNaN(r.latitude) && 
+    !isNaN(r.longitude)
+  );
 
   if (validRooms.length === 0 && rooms.length > 0) {
     return (

@@ -9,6 +9,7 @@ import { TenantRentScore } from '@/components/TenantRentScore';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import type { RentLedger, TenantCV } from '@/types';
+import { RentalCVShare } from '@/components/RentalCVShare';
 
 /**
  * Profile Page Component.
@@ -143,27 +144,7 @@ export default function Profile() {
 
             {/* YOUR RENTAL CV SHARING CARD */}
             {profile.role === 'tenant' && (
-              <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-indigo-200 flex flex-col md:flex-row items-center justify-between gap-8 animate-in slide-in-from-bottom-4 duration-500 delay-75">
-                 <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-[2rem] border border-white/20 flex items-center justify-center text-3xl font-black">
-                       {cvData?.rent_health_grade || 'N/A'}
-                    </div>
-                    <div>
-                       <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-2xl font-black tracking-tight leading-none italic">Your Rental CV 🎫</h3>
-                          <BadgeCheck size={20} className="text-indigo-300" />
-                       </div>
-                       <p className="text-indigo-100 font-medium text-sm opacity-80">Share your verified payment history with landlords</p>
-                    </div>
-                 </div>
-                 <button 
-                   onClick={() => setShowShareDrawer(true)}
-                   className="w-full md:w-auto bg-white text-indigo-600 px-10 py-5 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl hover:bg-indigo-50 active:scale-95 transition-all"
-                 >
-                    <Share2 size={20} />
-                    <span>Share My CV</span>
-                 </button>
-              </div>
+              <RentalCVShare profile={profile} cv={cvData} />
             )}
 
             {/* DEPOSIT VAULT STATUS CARD */}
@@ -248,74 +229,6 @@ export default function Profile() {
           </div>
        </div>
 
-        {/* SHARE DRAWER */}
-        {showShareDrawer && (
-           <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
-              <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity" onClick={() => setShowShareDrawer(false)}></div>
-              
-              <div className="bg-white w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] overflow-hidden shadow-2xl relative z-10 animate-in slide-in-from-bottom-10 duration-300">
-                 <div className="p-8 md:p-10 flex flex-col gap-8">
-                    <div className="flex justify-between items-center">
-                       <h3 className="text-2xl font-black text-slate-900 tracking-tighter italic">Share Your Records 🎫</h3>
-                       <button onClick={() => setShowShareDrawer(false)} className="text-slate-400 hover:text-slate-900 transition-colors">
-                          <Check size={24} />
-                       </button>
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                       {/* Direct Link */}
-                       <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Your CV Public Link</p>
-                          <div className="flex items-center gap-3">
-                             <div className="flex-1 text-xs font-bold text-slate-600 truncate bg-white p-3 rounded-xl border border-slate-200">
-                                {window.location.origin}/tenant-cv/{profile.id}
-                             </div>
-                             <button 
-                               onClick={() => {
-                                  navigator.clipboard.writeText(`${window.location.origin}/tenant-cv/${profile.id}`);
-                                  toast.success('CV Link Copied! 📋');
-                               }}
-                               className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors"
-                             >
-                                <Copy size={18} />
-                             </button>
-                          </div>
-                       </div>
-
-                       {/* Social Actions */}
-                       <div className="grid grid-cols-2 gap-4">
-                          <button 
-                            onClick={() => {
-                               const msg = `Hi! Here is my verified Rental CV from REHWAS showing my payment history: ${window.location.origin}/tenant-cv/${profile.id}`;
-                               window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                            }}
-                            className="bg-emerald-500 text-white p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:bg-emerald-600 transition-all active:scale-95"
-                          >
-                             <Send size={24} />
-                             <span className="font-black text-[10px] uppercase tracking-widest">WhatsApp</span>
-                          </button>
-                          <button 
-                            onClick={() => window.open(`/tenant-cv/${profile.id}`, '_blank')}
-                            className="bg-slate-900 text-white p-6 rounded-[2.5rem] flex flex-col items-center gap-3 hover:bg-slate-800 transition-all active:scale-95"
-                          >
-                             <LayoutGrid size={24} />
-                             <span className="font-black text-[10px] uppercase tracking-widest">View CV</span>
-                          </button>
-                       </div>
-
-                       <button 
-                         onClick={() => {
-                            window.open(`/tenant-cv/${profile.id}`, '_blank');
-                         }}
-                         className="w-full py-4 border-2 border-dashed border-slate-200 rounded-[2rem] text-slate-400 font-black text-xs uppercase tracking-widest hover:text-indigo-600 hover:border-indigo-200 transition-all"
-                       >
-                          Download as PDF 📄
-                       </button>
-                    </div>
-                 </div>
-              </div>
-           </div>
-        )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { calculateBhoomiScore, BhoomiInput } from '@/lib/bhoomiScore';
+import { calculateBhoomiScore, type BhoomiInput } from '@/lib/bhoomiScore';
 import { 
   ShieldCheck, Info, ArrowRight, CheckCircle2, 
   HelpCircle, AlertCircle, TrendingUp 

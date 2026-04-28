@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -60,7 +61,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // ─── DEMO SESSION CONSTANTS ───────────────────────────────────────────────
+  const DEMO_TENANT_PROFILE: Profile = {
+    id: 'demo-tenant-id',
+    full_name: 'Demo Tenant',
+    role: 'tenant',
+    plan: 'pro',
+    phone: null,
+    avatar_url: null,
+    kyc_status: 'verified',
+    kyc_verified: true,
+    trial_ends_at: null,
+    onboarding_completed_steps: ['profile', 'room'],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  } as unknown as Profile;
+
+  const DEMO_LANDLORD_PROFILE: Profile = {
+    id: '11111111-1111-1111-1111-111111111111',
+    full_name: 'Demo Landlord',
+    role: 'landlord',
+    plan: 'pro',
+    phone: null,
+    avatar_url: null,
+    kyc_status: 'verified',
+    kyc_verified: true,
+    trial_ends_at: null,
+    onboarding_completed_steps: ['profile', 'room'],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  } as unknown as Profile;
+  // ─────────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
+    // Restore demo session from localStorage first (no Supabase call needed)
+    const demoSession = localStorage.getItem('rehwas_demo_profile');
+    if (demoSession) {
+      try {
+        const p = JSON.parse(demoSession) as Profile;
+        setProfile(p);
+        setUser({ id: p.id, email: p.role === 'tenant' ? 'tenant@rehwas.com' : 'landlord@rehwas.com' } as any);
+        setLoading(false);
+        return;
+      } catch {
+        localStorage.removeItem('rehwas_demo_profile');
+      }
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -113,7 +160,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
+    // Clear demo session if active
+    localStorage.removeItem('rehwas_demo_profile');
     await supabase.auth.signOut();
+    setUser(null);
+    setProfile(null);
     queryClient.clear();
     navigate('/');
   };
@@ -143,55 +194,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error };
   };
   const signInWithEmail = async (email: string) => {
-    // Demo Mode Bypass
-    if (email === 'test@rehwas.com') {
+    // Demo Mode: skip email entirely — the OTP step will handle the bypass
+    if (['test@rehwas.com', 'tenant@rehwas.com', 'landlord@rehwas.com'].includes(email)) {
       return { error: null };
     }
     
     const { error } = await supabase.auth.signInWithOtp({ email });
+    
+    // Surface a friendlier error if SMTP is misconfigured
+    if (error?.message?.includes('sending confirmation email') || error?.message?.includes('sending email')) {
+      return {
+        error: Object.assign(new Error(
+          'Email delivery is currently unavailable. Please use Phone login instead, or contact support.'
+        ), { status: 503 })
+      };
+    }
+    
     return { error };
   };
 
   const verifyOtp = async (identifier: string, token: string, type: 'sms' | 'email' | 'magiclink' = 'sms') => {
-    // Demo Mode Bypass
-    if (identifier === 'test@rehwas.com' && token === '123456') {
-      console.log('🧪 Demo Mode Bypass Triggered');
-      
-      const testEmail = 'test@rehwas.com';
-      const testPassword = 'RehwasTest@123'; // Stronger password to satisfy complexity rules
+    // ─── DEMO MODE BYPASS (100% local — zero Supabase calls) ────────────────────
+    // Uses tenant@rehwas.com or landlord@rehwas.com + token 123456.
+    // Session is stored in localStorage so it survives page reloads.
+    // This completely sidesteps broken Supabase Auth triggers.
+    if (['test@rehwas.com', 'tenant@rehwas.com', 'landlord@rehwas.com'].includes(identifier) && token === '123456') {
+      console.log('🧪 Demo Mode: local bypass activated for', identifier);
 
-      // 1. Try to sign in
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: testEmail,
-        password: testPassword
-      });
+      const demoProfile = identifier === 'tenant@rehwas.com'
+        ? DEMO_TENANT_PROFILE
+        : DEMO_LANDLORD_PROFILE;
 
-      if (!signInError && signInData.user) {
-        console.log('🧪 Demo Login Successful');
-        const p = await fetchProfile(signInData.user.id);
-        return { error: null, profile: p };
-      }
+      const demoUser = {
+        id: demoProfile.id,
+        email: identifier,
+        app_metadata: {},
+        user_metadata: { full_name: demoProfile.full_name, role: demoProfile.role },
+        aud: 'authenticated',
+        created_at: demoProfile.created_at,
+      } as unknown as import('@supabase/supabase-js').User;
 
-      console.warn('🧪 Demo Login Failed, attempting automatic Sign Up...', signInError?.message);
+      // Persist to localStorage so the session survives a page refresh
+      localStorage.setItem('rehwas_demo_profile', JSON.stringify(demoProfile));
 
-      // 2. If login fails, try to sign up
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: testEmail,
-        password: testPassword,
-        options: {
-          data: { full_name: 'Test User' }
-        }
-      });
+      // Update React state immediately
+      setUser(demoUser);
+      setProfile(demoProfile);
 
-      if (!signUpError && signUpData.user) {
-        console.log('🧪 Demo Sign Up Successful');
-        const p = await fetchProfile(signUpData.user.id);
-        return { error: null, profile: p };
-      }
-
-      console.error('🧪 Demo Mode totally failed:', signUpError?.message || signInError?.message);
-      return { error: signUpError || signInError, profile: null };
+      toast.success(`Welcome, ${demoProfile.full_name}! 🎉`, { duration: 3000 });
+      return { error: null, profile: demoProfile };
     }
+    // ─── END DEMO MODE ──────────────────────────────────────────────────────────
 
     const params: any = { token, type };
     if (type === 'sms') params.phone = identifier;

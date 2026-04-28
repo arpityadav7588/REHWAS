@@ -140,6 +140,9 @@ export const Header = () => {
                 <Link to={profile?.role === 'landlord' ? "/dashboard" : "/discover"} onClick={() => setMobileMenuOpen(false)} className="text-center px-5 py-4 bg-brand text-white font-bold rounded-2xl shadow-sm">
                   Go to Dashboard
                 </Link>
+                <button onClick={() => { signOut(); setMobileMenuOpen(false); }} className="text-center px-5 py-4 text-red-600 bg-red-50 font-bold rounded-2xl">
+                  Sign Out
+                </button>
               </>
             )}
           </div>

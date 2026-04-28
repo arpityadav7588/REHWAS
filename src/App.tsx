@@ -21,6 +21,7 @@ import { RentBuddy } from '@/components/RentBuddy';
 import Pricing from '@/pages/Pricing';
 import Notifications from '@/pages/Notifications';
 import TenantCV from '@/pages/TenantCV';
+import DepositVault from '@/pages/DepositVault';
 
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ function App() {
               <Route path="/settings/billing" element={<Pricing />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/deposit-vault" element={<DepositVault />} />
             </Route>
 
             {/* 

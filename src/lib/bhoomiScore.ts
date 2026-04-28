@@ -13,7 +13,7 @@
  * hardest to fake by the landlord.
  */
 
-export interface BhoomiInput {
+export type BhoomiInput = {
   // Pillar 1: Landlord KYC (30 points max)
   landlord_kyc_verified: boolean        // +20 pts
   landlord_phone_verified: boolean      // +10 pts
@@ -31,7 +31,7 @@ export interface BhoomiInput {
   move_in_reports_completed: number     // 0-10 pts (5pt each, max 2)
 }
 
-export interface BhoomiResult {
+export type BhoomiResult = {
   score: number           // 0-100
   grade: 'A+' | 'A' | 'B+' | 'B' | 'C'
   gradeColor: string
